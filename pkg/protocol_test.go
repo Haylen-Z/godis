@@ -26,7 +26,8 @@ func TestWriteBulkString(t *testing.T) {
 
 	for _, c := range cases {
 		rw_mock.EXPECT().Write(c.out).Return(0, nil)
-		proc.WriteBulkString(c.in)
+		err := proc.WriteBulkString(c.in)
+		assert.Nil(t, err)
 	}
 }
 
@@ -52,7 +53,8 @@ func TestWriteBulkStringArray(t *testing.T) {
 		rw_mock.EXPECT().Write(gomock.Any()).Return(0, nil).Do(func(buf []byte) {
 			out = append(out, buf...)
 		}).AnyTimes()
-		proc.WriteBulkStringArray(c.in)
+		err := proc.WriteBulkStringArray(c.in)
+		assert.Nil(t, err)
 		assert.Equal(t, c.out, out)
 		out = nil
 	}
