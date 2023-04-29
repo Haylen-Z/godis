@@ -2,7 +2,6 @@ package pkg
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"strconv"
 
@@ -23,16 +22,13 @@ type Client interface {
 }
 
 type client struct {
-	con      net.Conn
-	protocol Protocol
+	address     string
+	connectFunc func(address string) (Connection, error)
 }
 
-func NewClient(address string) (Client, error) {
-	con, err := net.Dial("tcp", address)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to connect to server")
-	}
-	return &client{con: con, protocol: NewProtocl(con)}, nil
+func NewClient(address string) Client {
+	// TODO: add connection pool
+	return &client{address: address, connectFunc: NewConnection}
 }
 
 func buildCommandAndArgs(cmd string, args ...string) [][]byte {
@@ -44,31 +40,22 @@ func buildCommandAndArgs(cmd string, args ...string) [][]byte {
 	return cmdAndArgs
 }
 
-func (c *client) Get(ctx context.Context, key string) (*string, error) {
-	resChan := make(chan *string)
+func (c *client) sendComWithContext(ctx context.Context, sendFunc func(Connection) (interface{}, error)) (interface{}, error) {
+	resChan := make(chan interface{})
 	errChan := make(chan error)
-
 	go func() {
-		err := c.protocol.WriteBulkStringArray(buildCommandAndArgs("GET", key))
+		con, err := c.connectFunc(c.address)
 		if err != nil {
 			errChan <- err
 			return
 		}
-
-		bs, err := c.protocol.ReadBulkString()
+		res, err := sendFunc(con)
 		if err != nil {
 			errChan <- err
 			return
 		}
-
-		if bs == nil {
-			resChan <- nil
-			return
-		}
-		res := string(*bs)
-		resChan <- &res
+		resChan <- res
 	}()
-
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -77,6 +64,28 @@ func (c *client) Get(ctx context.Context, key string) (*string, error) {
 	case res := <-resChan:
 		return res, nil
 	}
+}
+
+func (c *client) Get(ctx context.Context, key string) (*string, error) {
+	res, err := c.sendComWithContext(ctx, func(con Connection) (interface{}, error) {
+		err := con.WriteBulkStringArray(buildCommandAndArgs("GET", key))
+		if err != nil {
+			return nil, err
+		}
+		bs, err := con.ReadBulkString()
+		if err != nil {
+			return nil, err
+		}
+		if bs == nil {
+			return nil, nil
+		}
+		s := string(*bs)
+		return &s, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return res.(*string), nil
 }
 
 type optArg func() []string
@@ -111,70 +120,75 @@ func getArgs(args []optArg) []string {
 }
 
 func (c *client) Set(ctx context.Context, key, value string, optArgs ...optArg) (bool, error) {
-	resChan := make(chan bool)
-	errChan := make(chan error)
-
-	var args = []string{key, value}
-	args = append(args, getArgs(optArgs)...)
-	fmt.Println(args)
-
-	go func() {
-		err := c.protocol.WriteBulkStringArray(buildCommandAndArgs("SET", args...))
+	res, err := c.sendComWithContext(ctx, func(con Connection) (interface{}, error) {
+		var args = []string{key, value}
+		args = append(args, getArgs(optArgs)...)
+		err := con.WriteBulkStringArray(buildCommandAndArgs("SET", args...))
 		if err != nil {
-			errChan <- err
-			return
+			return false, err
 		}
-		msgType, err := c.protocol.GetNextMsgType()
+		msgType, err := con.GetNextMsgType()
 		if err != nil {
-			errChan <- err
-			return
+			return false, err
 		}
 		switch msgType {
 		case SimpleStringType:
-			res, err := c.protocol.ReadSimpleString()
+			res, err := con.ReadSimpleString()
 			if err != nil {
-				errChan <- err
-				return
+				return false, err
 			}
 			if string(res) != "OK" {
-				errChan <- errors.New("unexpected response")
-				return
+				return false, errors.New("unexpected response")
 			}
-			resChan <- true
+			return true, nil
 		case BulkStringType:
-			res, err := c.protocol.ReadBulkString()
+			res, err := con.ReadBulkString()
 			if err != nil {
-				errChan <- err
-				return
+				return false, err
 			}
 			if res != nil {
-				errChan <- errors.New("unexpected response")
-				return
+				return false, errors.New("unexpected response")
 			}
-			resChan <- false
+			return false, nil
 		case ErrorType:
-			resErr, err := c.protocol.ReadError()
+			resErr, err := con.ReadError()
 			if err != nil {
-				errChan <- err
-				return
+				return false, err
 			}
-			errChan <- resErr
+			return false, resErr
 		default:
-			errChan <- errors.New("unexpected response")
-			return
+			return false, errors.New("unexpected response")
 		}
-	}()
 
-	select {
-	case <-ctx.Done():
-		return false, ctx.Err()
-	case err := <-errChan:
+	})
+	if err != nil {
 		return false, err
-	case res := <-resChan:
-		return res, nil
 	}
+	return res.(bool), nil
 }
 
 func (c *client) Close() error {
+	return nil
+}
+
+type Connection interface {
+	Protocol
+	Close() error
+}
+
+type connection struct {
+	Protocol
+	con net.Conn
+}
+
+func (c *connection) Close() error {
 	return c.con.Close()
+}
+
+func NewConnection(address string) (Connection, error) {
+	con, err := net.Dial("tcp", address)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to connect to server")
+	}
+	return &connection{con: con, Protocol: NewProtocol(con)}, nil
 }

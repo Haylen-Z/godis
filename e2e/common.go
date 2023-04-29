@@ -5,11 +5,7 @@ import "github.com/Haylen-Z/godis/pkg"
 var client pkg.Client
 
 func setupClient() {
-	var err error
-	client, err = pkg.NewClient("localhost:6379")
-	if err != nil {
-		panic(err)
-	}
+	client = pkg.NewClient("localhost:6379")
 }
 
 func teardownClient() {

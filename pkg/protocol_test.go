@@ -22,7 +22,7 @@ func TestWriteBulkString(t *testing.T) {
 		{[]byte(""), []byte("$0\r\n\r\n")},
 	}
 
-	var proc Protocol = NewProtocl(rw_mock)
+	var proc Protocol = NewProtocol(rw_mock)
 
 	for _, c := range cases {
 		rw_mock.EXPECT().Write(c.out).Return(0, nil)
@@ -46,7 +46,7 @@ func TestWriteBulkStringArray(t *testing.T) {
 		{[][]byte{[]byte("121324")}, []byte("*1\r\n$6\r\n121324\r\n")},
 	}
 
-	var proc Protocol = NewProtocl(rw_mock)
+	var proc Protocol = NewProtocol(rw_mock)
 
 	var out []byte
 	for _, c := range cases {
@@ -76,7 +76,7 @@ func TestReadBulkString(t *testing.T) {
 		{[]byte("$0\r\n\r\n"), []byte("")},
 	}
 
-	var proc Protocol = NewProtocl(rw_mock)
+	var proc Protocol = NewProtocol(rw_mock)
 	for _, c := range cases {
 		rw_mock.EXPECT().Read(gomock.Any()).Return(len(c.in), nil).Do(func(buf []byte) {
 			copy(buf, c.in)
@@ -123,7 +123,7 @@ func TestGetNextMsgType(t *testing.T) {
 		{[]byte(":100\r\n"), IntegerType},
 	}
 
-	var proc Protocol = NewProtocl(rw_mock)
+	var proc Protocol = NewProtocol(rw_mock)
 
 	for _, c := range cases {
 		rw_mock.EXPECT().Read(gomock.Any()).Return(len(c.in), nil).Do(func(buf []byte) {
@@ -150,7 +150,7 @@ func TestReadError(t *testing.T) {
 		{[]byte("-WRONGTYPE Operation against a key holding the wrong kind of value\r\n"), Error{"WRONGTYPE", "Operation against a key holding the wrong kind of value"}},
 	}
 
-	var proc Protocol = NewProtocl(rw_mock)
+	var proc Protocol = NewProtocol(rw_mock)
 	for _, c := range cases {
 		rw_mock.EXPECT().Read(gomock.Any()).Return(len(c.in), nil).Do(func(buf []byte) {
 			copy(buf, c.in)
@@ -177,7 +177,7 @@ func TestReadSimpleString(t *testing.T) {
 		{[]byte("+QUEUED\r\n"), "QUEUED"},
 	}
 
-	var proc Protocol = NewProtocl(rw_mock)
+	var proc Protocol = NewProtocol(rw_mock)
 	for _, c := range cases {
 		rw_mock.EXPECT().Read(gomock.Any()).Return(len(c.in), nil).Do(func(buf []byte) {
 			copy(buf, c.in)
