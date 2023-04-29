@@ -2,7 +2,6 @@ package pkg
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"strconv"
 
@@ -44,31 +43,17 @@ func buildCommandAndArgs(cmd string, args ...string) [][]byte {
 	return cmdAndArgs
 }
 
-func (c *client) Get(ctx context.Context, key string) (*string, error) {
-	resChan := make(chan *string)
+func (c *client) sendComWithContext(ctx context.Context, sendFunc func()(interface{}, error) ) (interface{}, error) {
+	resChan := make(chan interface{})
 	errChan := make(chan error)
-
 	go func() {
-		err := c.protocol.WriteBulkStringArray(buildCommandAndArgs("GET", key))
+		res, err := sendFunc()
 		if err != nil {
 			errChan <- err
 			return
 		}
-
-		bs, err := c.protocol.ReadBulkString()
-		if err != nil {
-			errChan <- err
-			return
-		}
-
-		if bs == nil {
-			resChan <- nil
-			return
-		}
-		res := string(*bs)
-		resChan <- &res
+		resChan <- res
 	}()
-
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -77,6 +62,28 @@ func (c *client) Get(ctx context.Context, key string) (*string, error) {
 	case res := <-resChan:
 		return res, nil
 	}
+}
+
+func (c *client) Get(ctx context.Context, key string) (*string, error) {
+	res, err := c.sendComWithContext(ctx, func() (interface{}, error) {
+		err := c.protocol.WriteBulkStringArray(buildCommandAndArgs("GET", key))
+		if err != nil {
+			return nil, err
+		}
+		bs, err := c.protocol.ReadBulkString()
+		if err != nil {
+			return nil, err
+		}
+		if bs == nil {
+			return nil, nil
+		}
+		s := string(*bs)
+		return &s, nil
+	})
+	if err != nil {
+		return nil, err
+	}	
+	return res.(*string), nil
 }
 
 type optArg func() []string
@@ -111,68 +118,51 @@ func getArgs(args []optArg) []string {
 }
 
 func (c *client) Set(ctx context.Context, key, value string, optArgs ...optArg) (bool, error) {
-	resChan := make(chan bool)
-	errChan := make(chan error)
-
-	var args = []string{key, value}
-	args = append(args, getArgs(optArgs)...)
-	fmt.Println(args)
-
-	go func() {
+	res, err := c.sendComWithContext(ctx, func() (interface{}, error) {
+		var args = []string{key, value}
+		args = append(args, getArgs(optArgs)...)
 		err := c.protocol.WriteBulkStringArray(buildCommandAndArgs("SET", args...))
 		if err != nil {
-			errChan <- err
-			return
+			return false, err
 		}
 		msgType, err := c.protocol.GetNextMsgType()
 		if err != nil {
-			errChan <- err
-			return
+			return false, err
 		}
 		switch msgType {
 		case SimpleStringType:
 			res, err := c.protocol.ReadSimpleString()
 			if err != nil {
-				errChan <- err
-				return
+				return false, err
 			}
 			if string(res) != "OK" {
-				errChan <- errors.New("unexpected response")
-				return
+				return false, errors.New("unexpected response")
 			}
-			resChan <- true
+			return true, nil
 		case BulkStringType:
 			res, err := c.protocol.ReadBulkString()
 			if err != nil {
-				errChan <- err
-				return
+				return false, err
 			}
 			if res != nil {
-				errChan <- errors.New("unexpected response")
-				return
+				return false, errors.New("unexpected response")
 			}
-			resChan <- false
+			return false, nil
 		case ErrorType:
 			resErr, err := c.protocol.ReadError()
 			if err != nil {
-				errChan <- err
-				return
+				return false, err
 			}
-			errChan <- resErr
+			return false, resErr
 		default:
-			errChan <- errors.New("unexpected response")
-			return
+			return false, errors.New("unexpected response")
 		}
-	}()
 
-	select {
-	case <-ctx.Done():
-		return false, ctx.Err()
-	case err := <-errChan:
+	})
+	if err != nil {
 		return false, err
-	case res := <-resChan:
-		return res, nil
 	}
+	return res.(bool), nil
 }
 
 func (c *client) Close() error {
