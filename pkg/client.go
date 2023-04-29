@@ -22,16 +22,13 @@ type Client interface {
 }
 
 type client struct {
-	con      net.Conn
-	protocol Protocol
+	address     string
+	connectFunc func(address string) (Connection, error)
 }
 
-func NewClient(address string) (Client, error) {
-	con, err := net.Dial("tcp", address)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to connect to server")
-	}
-	return &client{con: con, protocol: NewProtocl(con)}, nil
+func NewClient(address string) Client {
+	// TODO: add connection pool
+	return &client{address: address, connectFunc: NewConnection}
 }
 
 func buildCommandAndArgs(cmd string, args ...string) [][]byte {
@@ -43,11 +40,16 @@ func buildCommandAndArgs(cmd string, args ...string) [][]byte {
 	return cmdAndArgs
 }
 
-func (c *client) sendComWithContext(ctx context.Context, sendFunc func()(interface{}, error) ) (interface{}, error) {
+func (c *client) sendComWithContext(ctx context.Context, sendFunc func(Connection) (interface{}, error)) (interface{}, error) {
 	resChan := make(chan interface{})
 	errChan := make(chan error)
 	go func() {
-		res, err := sendFunc()
+		con, err := c.connectFunc(c.address)
+		if err != nil {
+			errChan <- err
+			return
+		}
+		res, err := sendFunc(con)
 		if err != nil {
 			errChan <- err
 			return
@@ -65,12 +67,12 @@ func (c *client) sendComWithContext(ctx context.Context, sendFunc func()(interfa
 }
 
 func (c *client) Get(ctx context.Context, key string) (*string, error) {
-	res, err := c.sendComWithContext(ctx, func() (interface{}, error) {
-		err := c.protocol.WriteBulkStringArray(buildCommandAndArgs("GET", key))
+	res, err := c.sendComWithContext(ctx, func(con Connection) (interface{}, error) {
+		err := con.WriteBulkStringArray(buildCommandAndArgs("GET", key))
 		if err != nil {
 			return nil, err
 		}
-		bs, err := c.protocol.ReadBulkString()
+		bs, err := con.ReadBulkString()
 		if err != nil {
 			return nil, err
 		}
@@ -82,7 +84,7 @@ func (c *client) Get(ctx context.Context, key string) (*string, error) {
 	})
 	if err != nil {
 		return nil, err
-	}	
+	}
 	return res.(*string), nil
 }
 
@@ -118,20 +120,20 @@ func getArgs(args []optArg) []string {
 }
 
 func (c *client) Set(ctx context.Context, key, value string, optArgs ...optArg) (bool, error) {
-	res, err := c.sendComWithContext(ctx, func() (interface{}, error) {
+	res, err := c.sendComWithContext(ctx, func(con Connection) (interface{}, error) {
 		var args = []string{key, value}
 		args = append(args, getArgs(optArgs)...)
-		err := c.protocol.WriteBulkStringArray(buildCommandAndArgs("SET", args...))
+		err := con.WriteBulkStringArray(buildCommandAndArgs("SET", args...))
 		if err != nil {
 			return false, err
 		}
-		msgType, err := c.protocol.GetNextMsgType()
+		msgType, err := con.GetNextMsgType()
 		if err != nil {
 			return false, err
 		}
 		switch msgType {
 		case SimpleStringType:
-			res, err := c.protocol.ReadSimpleString()
+			res, err := con.ReadSimpleString()
 			if err != nil {
 				return false, err
 			}
@@ -140,7 +142,7 @@ func (c *client) Set(ctx context.Context, key, value string, optArgs ...optArg) 
 			}
 			return true, nil
 		case BulkStringType:
-			res, err := c.protocol.ReadBulkString()
+			res, err := con.ReadBulkString()
 			if err != nil {
 				return false, err
 			}
@@ -149,7 +151,7 @@ func (c *client) Set(ctx context.Context, key, value string, optArgs ...optArg) 
 			}
 			return false, nil
 		case ErrorType:
-			resErr, err := c.protocol.ReadError()
+			resErr, err := con.ReadError()
 			if err != nil {
 				return false, err
 			}
@@ -166,5 +168,27 @@ func (c *client) Set(ctx context.Context, key, value string, optArgs ...optArg) 
 }
 
 func (c *client) Close() error {
+	return nil
+}
+
+type Connection interface {
+	Protocol
+	Close() error
+}
+
+type connection struct {
+	Protocol
+	con net.Conn
+}
+
+func (c *connection) Close() error {
 	return c.con.Close()
+}
+
+func NewConnection(address string) (Connection, error) {
+	con, err := net.Dial("tcp", address)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to connect to server")
+	}
+	return &connection{con: con, Protocol: NewProtocol(con)}, nil
 }

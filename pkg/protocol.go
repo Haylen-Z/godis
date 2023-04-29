@@ -58,7 +58,7 @@ type respProtocol struct {
 	hasRecLen int
 }
 
-func NewProtocl(rw io.ReadWriter) Protocol {
+func NewProtocol(rw io.ReadWriter) Protocol {
 	return &respProtocol{rw, make([]byte, 4096), 0}
 }
 
