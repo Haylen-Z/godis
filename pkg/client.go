@@ -180,5 +180,5 @@ func (c *client) set(protocl Protocol, cmdAndArgs [][]byte) (interface{}, error)
 }
 
 func (c *client) Close() error {
-	return nil
+	return c.conPool.Close()
 }
