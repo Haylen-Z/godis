@@ -14,7 +14,7 @@ func TestStringGetAndSet(t *testing.T) {
 	setupClient()
 	defer teardownClient()
 
-	res, err := client.Set(context.TODO(), "hello", "world")
+	res, err := client.Set(context.TODO(), "hello", []byte("world"))
 	assert.Nil(t, err)
 	assert.True(t, res)
 
@@ -22,11 +22,11 @@ func TestStringGetAndSet(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "world", string(*val))
 
-	res, err = client.Set(context.TODO(), "hello", "world2", pkg.EXArg(100), pkg.NXArg)
+	res, err = client.Set(context.TODO(), "hello", []byte("world2"), pkg.EXArg(100), pkg.NXArg)
 	assert.Nil(t, err)
 	assert.False(t, res)
 
-	res, err = client.Set(context.TODO(), "hello", "world2", pkg.XXArg, pkg.EXArg(100))
+	res, err = client.Set(context.TODO(), "hello", []byte("world2"), pkg.XXArg, pkg.EXArg(100))
 	assert.Nil(t, err)
 	assert.True(t, res)
 }
@@ -43,7 +43,7 @@ func TestConcurrent(t *testing.T) {
 			key := "hello" + strconv.Itoa(idx)
 			val := "world" + strconv.Itoa(idx)
 
-			res, err := client.Set(context.TODO(), key, val)
+			res, err := client.Set(context.TODO(), key, []byte(val))
 			assert.Nil(t, err)
 			assert.True(t, res)
 

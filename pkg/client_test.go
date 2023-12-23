@@ -62,9 +62,12 @@ func TestSetWhileReturnOk(t *testing.T) {
 	mkProtocol.EXPECT().GetNextMsgType().Return(MsgType(SimpleStringType), nil).Times(1)
 	mkProtocol.EXPECT().ReadSimpleString().Return([]byte("OK"), nil).Times(1)
 
-	ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
-	ret, err := testClient.Set(ctx, string(key), string(val))
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ret, err := testClient.Set(ctx, string(key), val)
 	assert.Nil(t, err)
 	assert.True(t, ret)
 
+	cancel()
+	_, err = testClient.Set(ctx, string(key), val)
+	assert.NotNil(t, err)
 }

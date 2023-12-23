@@ -15,7 +15,7 @@ type StringCommand interface {
 	Get(ctx context.Context, key string) (*[]byte, error)
 
 	// Set sets the value for the given key.
-	Set(ctx context.Context, key, value string, args ...optArg) (bool, error)
+	Set(ctx context.Context, key string, value []byte, args ...optArg) (bool, error)
 }
 
 type Client interface {
@@ -34,25 +34,15 @@ func NewClient(address string) Client {
 	return &client{address: address, newConnection: NewConnection, newProtocol: NewProtocol}
 }
 
-func buildCommandAndArgs(cmd string, args ...string) [][]byte {
-	cmdAndArgs := make([][]byte, 0, len(args)+1)
-	cmdAndArgs = append(cmdAndArgs, []byte(cmd))
-	for _, arg := range args {
-		cmdAndArgs = append(cmdAndArgs, []byte(arg))
-	}
-	return cmdAndArgs
-}
-
-type sendCmdFunc func(protocl Protocol, cmdAndArgs [][]byte) (interface{}, error)
+type sendCmdFunc func(protocl Protocol) (interface{}, error)
 
 type optArg func() []string
 
-func NXArg() []string {
+var NXArg optArg = func() []string {
 	return []string{"NX"}
-
 }
 
-func XXArg() []string {
+var XXArg optArg = func() []string {
 	return []string{"XX"}
 }
 
@@ -68,15 +58,23 @@ func PXArg(miliseconds int) optArg {
 	}
 }
 
-func getArgs(args []optArg) []string {
-	var res []string
-	for _, arg := range args {
-		res = append(res, arg()...)
+func stringsToBytes(strs []string) [][]byte {
+	var res [][]byte
+	for _, str := range strs {
+		res = append(res, []byte(str))
 	}
 	return res
 }
 
-func (c *client) sendComWithContext(ctx context.Context, sendFunc sendCmdFunc, cmd string, args ...string) (interface{}, error) {
+func getArgs(args []optArg) [][]byte {
+	var res []string
+	for _, arg := range args {
+		res = append(res, arg()...)
+	}
+	return stringsToBytes(res)
+}
+
+func (c *client) sendComWithContext(ctx context.Context, sendFunc sendCmdFunc) (interface{}, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -100,29 +98,42 @@ func (c *client) sendComWithContext(ctx context.Context, sendFunc sendCmdFunc, c
 		}
 	}
 
-	return sendFunc(c.newProtocol(con), buildCommandAndArgs(cmd, args...))
+	return sendFunc(c.newProtocol(con))
 }
 
 func (c *client) Get(ctx context.Context, key string) (*[]byte, error) {
-	get := func(protocl Protocol, cmdAndArgs [][]byte) (interface{}, error) {
-		err := protocl.WriteBulkStringArray(cmdAndArgs)
+	get := func(protocl Protocol) (interface{}, error) {
+		data := [][]byte{
+			[]byte("GET"), 
+			[]byte(key),
+		}
+		err := protocl.WriteBulkStringArray(data)
 		if err != nil {
 			return nil, err
 		}
 		return protocl.ReadBulkString()
 	}
 
-	res, err := c.sendComWithContext(ctx, get, "GET", key)
+	res, err := c.sendComWithContext(ctx, get)
 	if err != nil {
 		return nil, err
 	}
 	return res.(*[]byte), nil
 }
 
-func (c *client) Set(ctx context.Context, key, value string, optArgs ...optArg) (bool, error) {
+func (c *client) Set(ctx context.Context, key string, value []byte, optArgs ...optArg) (bool, error) {
+	args := [][]byte{
+		[]byte("SET"),
+		[]byte(key),
+		value,
+	}
 	optArgsargs := getArgs(optArgs)
-	args := append([]string{key, value}, optArgsargs...)
-	res, err := c.sendComWithContext(ctx, c.set, "SET", args...)
+	args = append(args, optArgsargs...)
+
+	com := func(protocl Protocol) (interface{}, error) {
+		return c.set(protocl, args)
+	}
+	res, err := c.sendComWithContext(ctx, com)
 	if err != nil {
 		return false, err
 	}
