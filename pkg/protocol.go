@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"sync"
 
 	"github.com/pkg/errors"
 )
@@ -58,8 +59,14 @@ type respProtocol struct {
 	hasRecLen int
 }
 
+var buffPool = sync.Pool{
+	New: func() interface{} {
+		return make([]byte, 4096)
+	},
+}
+
 func NewProtocol(rw io.ReadWriter) Protocol {
-	return &respProtocol{rw, make([]byte, 4096), 0}
+	return &respProtocol{rw, buffPool.Get().([]byte), 0}
 }
 
 func (p *respProtocol) WriteBulkString(s []byte) error {

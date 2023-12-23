@@ -2,18 +2,22 @@ package pkg
 
 import (
 	"context"
-	"net"
+	"math"
+
+	"io"
+	"log"
 	"strconv"
+	"time"
 
 	"github.com/pkg/errors"
 )
 
 type StringCommand interface {
 	// Get returns the value for the given key.
-	Get(ctx context.Context, key string) (*string, error)
+	Get(ctx context.Context, key string) (*[]byte, error)
 
 	// Set sets the value for the given key.
-	Set(ctx context.Context, key, value string, args ...optArg) (bool, error)
+	Set(ctx context.Context, key string, value []byte, args ...optArg) (bool, error)
 }
 
 type Client interface {
@@ -23,79 +27,23 @@ type Client interface {
 
 type client struct {
 	address     string
-	connectFunc func(address string) (Connection, error)
+	conPool     ConnectionPool
+	newProtocol func(io.ReadWriter) Protocol
 }
 
 func NewClient(address string) Client {
-	// TODO: add connection pool
-	return &client{address: address, connectFunc: NewConnection}
+	return &client{address: address, conPool: NewConnectionPool(address, math.MaxInt), newProtocol: NewProtocol}
 }
 
-func buildCommandAndArgs(cmd string, args ...string) [][]byte {
-	cmdAndArgs := make([][]byte, 0, len(args)+1)
-	cmdAndArgs = append(cmdAndArgs, []byte(cmd))
-	for _, arg := range args {
-		cmdAndArgs = append(cmdAndArgs, []byte(arg))
-	}
-	return cmdAndArgs
-}
-
-func (c *client) sendComWithContext(ctx context.Context, sendFunc func(Connection) (interface{}, error)) (interface{}, error) {
-	resChan := make(chan interface{})
-	errChan := make(chan error)
-	go func() {
-		con, err := c.connectFunc(c.address)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		res, err := sendFunc(con)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		resChan <- res
-	}()
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case err := <-errChan:
-		return nil, err
-	case res := <-resChan:
-		return res, nil
-	}
-}
-
-func (c *client) Get(ctx context.Context, key string) (*string, error) {
-	res, err := c.sendComWithContext(ctx, func(con Connection) (interface{}, error) {
-		err := con.WriteBulkStringArray(buildCommandAndArgs("GET", key))
-		if err != nil {
-			return nil, err
-		}
-		bs, err := con.ReadBulkString()
-		if err != nil {
-			return nil, err
-		}
-		if bs == nil {
-			return nil, nil
-		}
-		s := string(*bs)
-		return &s, nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return res.(*string), nil
-}
+type sendCmdFunc func(protocl Protocol) (interface{}, error)
 
 type optArg func() []string
 
-func NXArg() []string {
+var NXArg optArg = func() []string {
 	return []string{"NX"}
-
 }
 
-func XXArg() []string {
+var XXArg optArg = func() []string {
 	return []string{"XX"}
 }
 
@@ -111,84 +59,126 @@ func PXArg(miliseconds int) optArg {
 	}
 }
 
-func getArgs(args []optArg) []string {
-	var res []string
-	for _, arg := range args {
-		res = append(res, arg()...)
+func stringsToBytes(strs []string) [][]byte {
+	var res [][]byte
+	for _, str := range strs {
+		res = append(res, []byte(str))
 	}
 	return res
 }
 
-func (c *client) Set(ctx context.Context, key, value string, optArgs ...optArg) (bool, error) {
-	res, err := c.sendComWithContext(ctx, func(con Connection) (interface{}, error) {
-		var args = []string{key, value}
-		args = append(args, getArgs(optArgs)...)
-		err := con.WriteBulkStringArray(buildCommandAndArgs("SET", args...))
-		if err != nil {
-			return false, err
-		}
-		msgType, err := con.GetNextMsgType()
-		if err != nil {
-			return false, err
-		}
-		switch msgType {
-		case SimpleStringType:
-			res, err := con.ReadSimpleString()
-			if err != nil {
-				return false, err
-			}
-			if string(res) != "OK" {
-				return false, errors.New("unexpected response")
-			}
-			return true, nil
-		case BulkStringType:
-			res, err := con.ReadBulkString()
-			if err != nil {
-				return false, err
-			}
-			if res != nil {
-				return false, errors.New("unexpected response")
-			}
-			return false, nil
-		case ErrorType:
-			resErr, err := con.ReadError()
-			if err != nil {
-				return false, err
-			}
-			return false, resErr
-		default:
-			return false, errors.New("unexpected response")
-		}
+func getArgs(args []optArg) [][]byte {
+	var res []string
+	for _, arg := range args {
+		res = append(res, arg()...)
+	}
+	return stringsToBytes(res)
+}
 
-	})
+func (c *client) sendComWithContext(ctx context.Context, sendFunc sendCmdFunc) (interface{}, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	con, err := c.conPool.GetConnection()
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		err := c.conPool.Release(con)
+		if err != nil {
+			log.Println(err)
+		}
+	}()
+
+	if dl, ok := ctx.Deadline(); ok {
+		if c, ok := con.(interface{ SetReadDeadline(t time.Time) error }); ok {
+			if err := c.SetReadDeadline(dl); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return sendFunc(c.newProtocol(con))
+}
+
+func (c *client) Get(ctx context.Context, key string) (*[]byte, error) {
+	get := func(protocl Protocol) (interface{}, error) {
+		data := [][]byte{
+			[]byte("GET"),
+			[]byte(key),
+		}
+		err := protocl.WriteBulkStringArray(data)
+		if err != nil {
+			return nil, err
+		}
+		return protocl.ReadBulkString()
+	}
+	res, err := c.sendComWithContext(ctx, get)
+	if err != nil {
+		return nil, err
+	}
+	return res.(*[]byte), nil
+}
+
+func (c *client) Set(ctx context.Context, key string, value []byte, optArgs ...optArg) (bool, error) {
+	args := [][]byte{
+		[]byte("SET"),
+		[]byte(key),
+		value,
+	}
+	optArgsargs := getArgs(optArgs)
+	args = append(args, optArgsargs...)
+
+	com := func(protocl Protocol) (interface{}, error) {
+		return c.set(protocl, args)
+	}
+	res, err := c.sendComWithContext(ctx, com)
 	if err != nil {
 		return false, err
 	}
 	return res.(bool), nil
 }
 
-func (c *client) Close() error {
-	return nil
-}
-
-type Connection interface {
-	Protocol
-	Close() error
-}
-
-type connection struct {
-	Protocol
-	con net.Conn
-}
-
-func (c *connection) Close() error {
-	return c.con.Close()
-}
-
-func NewConnection(address string) (Connection, error) {
-	con, err := net.Dial("tcp", address)
+func (c *client) set(protocl Protocol, cmdAndArgs [][]byte) (interface{}, error) {
+	err := protocl.WriteBulkStringArray(cmdAndArgs)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to connect to server")
+		return false, err
 	}
-	return &connection{con: con, Protocol: NewProtocol(con)}, nil
+	msgType, err := protocl.GetNextMsgType()
+	if err != nil {
+		return false, err
+	}
+	switch msgType {
+	case SimpleStringType:
+		res, err := protocl.ReadSimpleString()
+		if err != nil {
+			return false, err
+		}
+		if string(res) != "OK" {
+			return false, errors.New("unexpected response")
+		}
+		return true, nil
+	case BulkStringType:
+		res, err := protocl.ReadBulkString()
+		if err != nil {
+			return false, err
+		}
+		if res != nil {
+			return false, errors.New("unexpected response")
+		}
+		return false, nil
+	case ErrorType:
+		resErr, err := protocl.ReadError()
+		if err != nil {
+			return false, err
+		}
+		return false, resErr
+	default:
+		return false, errors.New("unexpected response")
+	}
+}
+
+func (c *client) Close() error {
+	return c.conPool.Close()
 }
