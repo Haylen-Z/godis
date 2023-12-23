@@ -10,21 +10,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var mkCon *MockConnection
 var mkProtocol *MockProtocol
 var testClient Client
 
 func initTestClient(ctr *gomock.Controller) {
-	mkCon = NewMockConnection(ctr)
+	mkCon := NewMockConnection(ctr)
 	mkProtocol = NewMockProtocol(ctr)
-	newCon := func(_ string) Connection {
-		return mkCon
-	}
+	mkPool := NewMockConnectionPool(ctr)
+	mkPool.EXPECT().GetConnection().Return(mkCon, nil).AnyTimes()
+	mkPool.EXPECT().Release(mkCon).Return(nil).AnyTimes()
 	newProtocol := func(_ io.ReadWriter) Protocol {
 		return mkProtocol
 	}
 
-	testClient = &client{address: "1.1.1.1:6379", newConnection: newCon,
+	testClient = &client{address: "1.1.1.1:6379", conPool: mkPool,
 		newProtocol: newProtocol,
 	}
 }
@@ -36,8 +35,6 @@ func TestGet(t *testing.T) {
 
 	key := []byte("key")
 	res := []byte("value")
-	mkCon.EXPECT().Connect().Return(nil).Times(1)
-	mkCon.EXPECT().Close().Return(nil).Times(1)
 	mkProtocol.EXPECT().WriteBulkStringArray([][]byte{
 		[]byte("GET"), key}).Return(nil).Times(1)
 	mkProtocol.EXPECT().ReadBulkString().Return(&res, nil).Times(1)
@@ -54,9 +51,6 @@ func TestSetWhileReturnOk(t *testing.T) {
 
 	key := []byte("key")
 	val := []byte("value")
-
-	mkCon.EXPECT().Connect().Return(nil).Times(1)
-	mkCon.EXPECT().Close().Return(nil).Times(1)
 
 	mkProtocol.EXPECT().WriteBulkStringArray([][]byte{[]byte("SET"), key, val}).Return(nil).Times(1)
 	mkProtocol.EXPECT().GetNextMsgType().Return(MsgType(SimpleStringType), nil).Times(1)

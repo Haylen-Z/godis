@@ -2,6 +2,8 @@ package pkg
 
 import (
 	"context"
+	"math"
+
 	"io"
 	"log"
 	"strconv"
@@ -24,14 +26,13 @@ type Client interface {
 }
 
 type client struct {
-	address       string
-	newConnection func(address string) Connection
-	newProtocol   func(io.ReadWriter) Protocol
+	address     string
+	conPool     ConnectionPool
+	newProtocol func(io.ReadWriter) Protocol
 }
 
 func NewClient(address string) Client {
-	// TODO: add connection pool
-	return &client{address: address, newConnection: NewConnection, newProtocol: NewProtocol}
+	return &client{address: address, conPool: NewConnectionPool(address, math.MaxInt), newProtocol: NewProtocol}
 }
 
 type sendCmdFunc func(protocl Protocol) (interface{}, error)
@@ -79,12 +80,12 @@ func (c *client) sendComWithContext(ctx context.Context, sendFunc sendCmdFunc) (
 		return nil, err
 	}
 
-	con := c.newConnection(c.address)
-	if err := con.Connect(); err != nil {
+	con, err := c.conPool.GetConnection()
+	if err != nil {
 		return nil, err
 	}
 	defer func() {
-		err := con.Close()
+		err := c.conPool.Release(con)
 		if err != nil {
 			log.Println(err)
 		}
@@ -104,7 +105,7 @@ func (c *client) sendComWithContext(ctx context.Context, sendFunc sendCmdFunc) (
 func (c *client) Get(ctx context.Context, key string) (*[]byte, error) {
 	get := func(protocl Protocol) (interface{}, error) {
 		data := [][]byte{
-			[]byte("GET"), 
+			[]byte("GET"),
 			[]byte(key),
 		}
 		err := protocl.WriteBulkStringArray(data)
@@ -113,7 +114,6 @@ func (c *client) Get(ctx context.Context, key string) (*[]byte, error) {
 		}
 		return protocl.ReadBulkString()
 	}
-
 	res, err := c.sendComWithContext(ctx, get)
 	if err != nil {
 		return nil, err

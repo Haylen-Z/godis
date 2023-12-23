@@ -3,10 +3,10 @@
 test: e2e_test pkg_test
 
 benchmark:
-	go run ./cmd/benchmark/main.go --worker 400 --loop 10000
+	go run ./cmd/benchmark/main.go --worker 100 --loop 1000
 
 e2e_test:
-	go test ./e2e/...
+	go test -race ./e2e/...
 
 pkg_test:
 	go test ./pkg/...

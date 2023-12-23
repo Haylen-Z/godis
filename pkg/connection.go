@@ -74,12 +74,12 @@ func NewConnectionPool(address string, maxConNum int) ConnectionPool {
 }
 
 func (p *connectionPool) GetConnection() (Connection, error) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
 	if p.closed {
 		return nil, ClosedPoolError
 	}
-
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
 
 	if len(p.pool) == 0 {
 		if p.AllConNum >= p.MaxConNum {
@@ -102,11 +102,12 @@ func (p *connectionPool) GetConnection() (Connection, error) {
 }
 
 func (p *connectionPool) Release(conn Connection) error {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
 	if p.closed {
 		return ClosedPoolError
 	}
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
 
 	p.pool = append(p.pool, conn)
 	p.UsedConNum--
@@ -114,11 +115,13 @@ func (p *connectionPool) Release(conn Connection) error {
 }
 
 func (p *connectionPool) Close() error {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
 	if p.closed {
 		return nil
 	}
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
+
 	for _, conn := range p.pool {
 		err := conn.Close()
 		if err != nil {
