@@ -1,12 +1,70 @@
 package pkg
 
 import (
+	"context"
 	"sync"
 	"testing"
+	"time"
 
 	gomock "github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestConnectionReadWithCanceled(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	con := connection{}
+
+	_, err := con.Read(ctx, []byte{})
+	assert.Equal(t, err, ctx.Err())
+}
+
+func TestConnectionReadWithDeadline(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	dl, _ := ctx.Deadline()
+	defer cancel()
+
+	con := connection{con: NewMockConn(ctrl)}
+	con.con.(*MockConn).EXPECT().SetReadDeadline(dl).Return(nil).Times(1)
+	con.con.(*MockConn).EXPECT().Read(gomock.Any()).Return(0, nil).Times(1)
+
+	_, err := con.Read(ctx, []byte{})
+	assert.Nil(t, err)
+}
+
+func TestConnectionWriteWithCanceled(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	con := connection{}
+
+	_, err := con.Write(ctx, []byte{})
+	assert.Equal(t, err, ctx.Err())
+}
+
+func TestConnectionWriteWithDeadline(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	dl, _ := ctx.Deadline()
+	defer cancel()
+
+	con := connection{con: NewMockConn(ctrl)}
+	con.con.(*MockConn).EXPECT().SetWriteDeadline(dl).Return(nil).Times(1)
+	con.con.(*MockConn).EXPECT().Write(gomock.Any()).Return(0, nil).Times(1)
+
+	_, err := con.Write(ctx, []byte{})
+	assert.Nil(t, err)
+}
 
 func getMockConnectionPool(ctrl *gomock.Controller) *connectionPool {
 	var cp *connectionPool = &connectionPool{

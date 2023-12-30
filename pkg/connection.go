@@ -1,7 +1,7 @@
 package pkg
 
 import (
-	"io"
+	"context"
 	"math"
 	"net"
 	"sync"
@@ -11,7 +11,8 @@ import (
 )
 
 type Connection interface {
-	io.ReadWriter
+	Read(ctx context.Context, p []byte) (n int, err error)
+	Write(ctx context.Context, p []byte) (n int, err error)
 	Connect() error
 	Close() error
 }
@@ -19,27 +20,53 @@ type Connection interface {
 var connectTimeOut = 500 * time.Millisecond
 
 type connection struct {
-	net.Conn
+	con     net.Conn
 	address string
 }
 
 func (c *connection) Close() error {
-	con := c.Conn
-	c.Conn = nil
+	con := c.con
+	c.con = nil
 	return con.Close()
 }
 
 func (c *connection) Connect() error {
-	if c.Conn != nil {
+	if c.con != nil {
 		return nil
 	}
 
 	var err error
-	c.Conn, err = net.DialTimeout("tcp", c.address, connectTimeOut)
+	c.con, err = net.DialTimeout("tcp", c.address, connectTimeOut)
 	if err != nil {
 		return errors.Wrap(err, "failed to connect to "+c.address)
 	}
 	return nil
+}
+
+func (c *connection) Read(ctx context.Context, p []byte) (n int, err error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+
+	if dl, ok := ctx.Deadline(); ok {
+		if err := c.con.SetReadDeadline(dl); err != nil {
+			return 0, err
+		}
+	}
+	return c.con.Read(p)
+}
+
+func (c *connection) Write(ctx context.Context, p []byte) (n int, err error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+
+	if dl, ok := ctx.Deadline(); ok {
+		if err := c.con.SetWriteDeadline(dl); err != nil {
+			return 0, err
+		}
+	}
+	return c.con.Write(p)
 }
 
 func NewConnection(address string) Connection {

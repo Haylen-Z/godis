@@ -5,6 +5,7 @@
 package pkg
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -34,89 +35,89 @@ func (m *MockProtocol) EXPECT() *MockProtocolMockRecorder {
 }
 
 // GetNextMsgType mocks base method.
-func (m *MockProtocol) GetNextMsgType() (MsgType, error) {
+func (m *MockProtocol) GetNextMsgType(ctx context.Context) (MsgType, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetNextMsgType")
+	ret := m.ctrl.Call(m, "GetNextMsgType", ctx)
 	ret0, _ := ret[0].(MsgType)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetNextMsgType indicates an expected call of GetNextMsgType.
-func (mr *MockProtocolMockRecorder) GetNextMsgType() *gomock.Call {
+func (mr *MockProtocolMockRecorder) GetNextMsgType(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNextMsgType", reflect.TypeOf((*MockProtocol)(nil).GetNextMsgType))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNextMsgType", reflect.TypeOf((*MockProtocol)(nil).GetNextMsgType), ctx)
 }
 
 // ReadBulkString mocks base method.
-func (m *MockProtocol) ReadBulkString() (*[]byte, error) {
+func (m *MockProtocol) ReadBulkString(ctx context.Context) (*[]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadBulkString")
+	ret := m.ctrl.Call(m, "ReadBulkString", ctx)
 	ret0, _ := ret[0].(*[]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ReadBulkString indicates an expected call of ReadBulkString.
-func (mr *MockProtocolMockRecorder) ReadBulkString() *gomock.Call {
+func (mr *MockProtocolMockRecorder) ReadBulkString(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadBulkString", reflect.TypeOf((*MockProtocol)(nil).ReadBulkString))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadBulkString", reflect.TypeOf((*MockProtocol)(nil).ReadBulkString), ctx)
 }
 
 // ReadError mocks base method.
-func (m *MockProtocol) ReadError() (Error, error) {
+func (m *MockProtocol) ReadError(ctx context.Context) (Error, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadError")
+	ret := m.ctrl.Call(m, "ReadError", ctx)
 	ret0, _ := ret[0].(Error)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ReadError indicates an expected call of ReadError.
-func (mr *MockProtocolMockRecorder) ReadError() *gomock.Call {
+func (mr *MockProtocolMockRecorder) ReadError(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadError", reflect.TypeOf((*MockProtocol)(nil).ReadError))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadError", reflect.TypeOf((*MockProtocol)(nil).ReadError), ctx)
 }
 
 // ReadSimpleString mocks base method.
-func (m *MockProtocol) ReadSimpleString() ([]byte, error) {
+func (m *MockProtocol) ReadSimpleString(ctx context.Context) ([]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadSimpleString")
+	ret := m.ctrl.Call(m, "ReadSimpleString", ctx)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ReadSimpleString indicates an expected call of ReadSimpleString.
-func (mr *MockProtocolMockRecorder) ReadSimpleString() *gomock.Call {
+func (mr *MockProtocolMockRecorder) ReadSimpleString(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadSimpleString", reflect.TypeOf((*MockProtocol)(nil).ReadSimpleString))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadSimpleString", reflect.TypeOf((*MockProtocol)(nil).ReadSimpleString), ctx)
 }
 
 // WriteBulkString mocks base method.
-func (m *MockProtocol) WriteBulkString(bs []byte) error {
+func (m *MockProtocol) WriteBulkString(ctx context.Context, bs []byte) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WriteBulkString", bs)
+	ret := m.ctrl.Call(m, "WriteBulkString", ctx, bs)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // WriteBulkString indicates an expected call of WriteBulkString.
-func (mr *MockProtocolMockRecorder) WriteBulkString(bs interface{}) *gomock.Call {
+func (mr *MockProtocolMockRecorder) WriteBulkString(ctx, bs interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteBulkString", reflect.TypeOf((*MockProtocol)(nil).WriteBulkString), bs)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteBulkString", reflect.TypeOf((*MockProtocol)(nil).WriteBulkString), ctx, bs)
 }
 
 // WriteBulkStringArray mocks base method.
-func (m *MockProtocol) WriteBulkStringArray(bss [][]byte) error {
+func (m *MockProtocol) WriteBulkStringArray(ctx context.Context, bss [][]byte) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WriteBulkStringArray", bss)
+	ret := m.ctrl.Call(m, "WriteBulkStringArray", ctx, bss)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // WriteBulkStringArray indicates an expected call of WriteBulkStringArray.
-func (mr *MockProtocolMockRecorder) WriteBulkStringArray(bss interface{}) *gomock.Call {
+func (mr *MockProtocolMockRecorder) WriteBulkStringArray(ctx, bss interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteBulkStringArray", reflect.TypeOf((*MockProtocol)(nil).WriteBulkStringArray), bss)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteBulkStringArray", reflect.TypeOf((*MockProtocol)(nil).WriteBulkStringArray), ctx, bss)
 }

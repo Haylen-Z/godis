@@ -4,10 +4,8 @@ import (
 	"context"
 	"math"
 
-	"io"
 	"log"
 	"strconv"
-	"time"
 
 	"github.com/pkg/errors"
 )
@@ -28,14 +26,14 @@ type Client interface {
 type client struct {
 	address     string
 	conPool     ConnectionPool
-	newProtocol func(io.ReadWriter) Protocol
+	newProtocol func(Connection) Protocol
 }
 
 func NewClient(address string) Client {
 	return &client{address: address, conPool: NewConnectionPool(address, math.MaxInt), newProtocol: NewProtocol}
 }
 
-type sendCmdFunc func(protocl Protocol) (interface{}, error)
+type cmdFunc func(ctx context.Context, protocl Protocol) (interface{}, error)
 
 type optArg func() []string
 
@@ -75,11 +73,7 @@ func getArgs(args []optArg) [][]byte {
 	return stringsToBytes(res)
 }
 
-func (c *client) sendComWithContext(ctx context.Context, sendFunc sendCmdFunc) (interface{}, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-
+func (c *client) send(ctx context.Context, cmd cmdFunc) (interface{}, error) {
 	con, err := c.conPool.GetConnection()
 	if err != nil {
 		return nil, err
@@ -91,30 +85,22 @@ func (c *client) sendComWithContext(ctx context.Context, sendFunc sendCmdFunc) (
 		}
 	}()
 
-	if dl, ok := ctx.Deadline(); ok {
-		if c, ok := con.(interface{ SetReadDeadline(t time.Time) error }); ok {
-			if err := c.SetReadDeadline(dl); err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return sendFunc(c.newProtocol(con))
+	return cmd(ctx, c.newProtocol(con))
 }
 
 func (c *client) Get(ctx context.Context, key string) (*[]byte, error) {
-	get := func(protocl Protocol) (interface{}, error) {
+	get := func(ctx context.Context, protocl Protocol) (interface{}, error) {
 		data := [][]byte{
 			[]byte("GET"),
 			[]byte(key),
 		}
-		err := protocl.WriteBulkStringArray(data)
+		err := protocl.WriteBulkStringArray(ctx, data)
 		if err != nil {
 			return nil, err
 		}
-		return protocl.ReadBulkString()
+		return protocl.ReadBulkString(ctx)
 	}
-	res, err := c.sendComWithContext(ctx, get)
+	res, err := c.send(ctx, get)
 	if err != nil {
 		return nil, err
 	}
@@ -130,28 +116,28 @@ func (c *client) Set(ctx context.Context, key string, value []byte, optArgs ...o
 	optArgsargs := getArgs(optArgs)
 	args = append(args, optArgsargs...)
 
-	com := func(protocl Protocol) (interface{}, error) {
-		return c.set(protocl, args)
+	com := func(ctx context.Context, protocl Protocol) (interface{}, error) {
+		return c.set(ctx, protocl, args)
 	}
-	res, err := c.sendComWithContext(ctx, com)
+	res, err := c.send(ctx, com)
 	if err != nil {
 		return false, err
 	}
 	return res.(bool), nil
 }
 
-func (c *client) set(protocl Protocol, cmdAndArgs [][]byte) (interface{}, error) {
-	err := protocl.WriteBulkStringArray(cmdAndArgs)
+func (c *client) set(ctx context.Context, protocl Protocol, cmdAndArgs [][]byte) (interface{}, error) {
+	err := protocl.WriteBulkStringArray(ctx, cmdAndArgs)
 	if err != nil {
 		return false, err
 	}
-	msgType, err := protocl.GetNextMsgType()
+	msgType, err := protocl.GetNextMsgType(ctx)
 	if err != nil {
 		return false, err
 	}
 	switch msgType {
 	case SimpleStringType:
-		res, err := protocl.ReadSimpleString()
+		res, err := protocl.ReadSimpleString(ctx)
 		if err != nil {
 			return false, err
 		}
@@ -160,7 +146,7 @@ func (c *client) set(protocl Protocol, cmdAndArgs [][]byte) (interface{}, error)
 		}
 		return true, nil
 	case BulkStringType:
-		res, err := protocl.ReadBulkString()
+		res, err := protocl.ReadBulkString(ctx)
 		if err != nil {
 			return false, err
 		}
@@ -169,7 +155,7 @@ func (c *client) set(protocl Protocol, cmdAndArgs [][]byte) (interface{}, error)
 		}
 		return false, nil
 	case ErrorType:
-		resErr, err := protocl.ReadError()
+		resErr, err := protocl.ReadError(ctx)
 		if err != nil {
 			return false, err
 		}
