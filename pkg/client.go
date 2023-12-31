@@ -10,13 +10,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-
-
 type Command interface {
 	SendReq(ctx context.Context, protocol Protocol) error
 	ReadResp(ctx context.Context, protocol Protocol) (interface{}, error)
 }
-
 
 type Client interface {
 	Close() error
@@ -58,7 +55,6 @@ func (c *client) exec(ctx context.Context, cmd Command) (interface{}, error) {
 	}
 	return cmd.ReadResp(ctx, protocol)
 }
-
 
 type optArg func() []string
 
@@ -124,8 +120,8 @@ func (c *client) Get(ctx context.Context, key string) (*[]byte, error) {
 }
 
 type stringSetCommand struct {
-	key   string
-	value []byte
+	key     string
+	value   []byte
 	optArgs []optArg
 }
 
