@@ -65,21 +65,22 @@ func TestPipeline(t *testing.T) {
 
 	key := []byte("key")
 	val := []byte("value")
+	ctx := context.Background()
 
 	// Set
-	mkProtocol.EXPECT().WriteBulkStringArray(context.TODO(), [][]byte{[]byte("SET"), key, val}).Return(nil).Times(1)
-	mkProtocol.EXPECT().GetNextMsgType(context.TODO()).Return(MsgType(SimpleStringType), nil).Times(1)
-	mkProtocol.EXPECT().ReadSimpleString(context.TODO()).Return([]byte("OK"), nil).Times(1)
+	mkProtocol.EXPECT().WriteBulkStringArray(ctx, [][]byte{[]byte("SET"), key, val}).Return(nil).Times(1)
+	mkProtocol.EXPECT().GetNextMsgType(ctx).Return(MsgType(SimpleStringType), nil).Times(1)
+	mkProtocol.EXPECT().ReadSimpleString(ctx).Return([]byte("OK"), nil).Times(1)
 
 	// Get
-	mkProtocol.EXPECT().WriteBulkStringArray(context.TODO(), [][]byte{
+	mkProtocol.EXPECT().WriteBulkStringArray(ctx, [][]byte{
 		[]byte("GET"), key}).Return(nil).Times(1)
-	mkProtocol.EXPECT().ReadBulkString(context.TODO()).Return(&val, nil).Times(1)
+	mkProtocol.EXPECT().ReadBulkString(ctx).Return(&val, nil).Times(1)
 
 	pipeline := testClient.Pipeline()
-	pipeline.Set(context.Background(), string(key), val)
-	pipeline.Get(context.Background(), string(key))
-	res, err := pipeline.Exec(context.Background())
+	pipeline.Set(string(key), val)
+	pipeline.Get(string(key))
+	res, err := pipeline.Exec(ctx)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
 

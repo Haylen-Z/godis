@@ -104,11 +104,11 @@ type Pipeline struct {
 	commands []Command
 }
 
-func (p *Pipeline) Get(ctx context.Context, key string) {
+func (p *Pipeline) Get(key string) {
 	p.commands = append(p.commands, &stringGetCommand{key: key})
 }
 
-func (p *Pipeline) Set(ctx context.Context, key string, value []byte, args ...optArg) {
+func (p *Pipeline) Set(key string, value []byte, args ...optArg) {
 	p.commands = append(p.commands, &stringSetCommand{key: key, value: value, optArgs: args})
 }
 

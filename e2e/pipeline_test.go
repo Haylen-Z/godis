@@ -17,8 +17,8 @@ func TestPipeline(t *testing.T) {
 	key := "hello"
 	val := "world"
 
-	pipeline.Set(ctx, key, []byte(val))
-	pipeline.Get(ctx, key)
+	pipeline.Set(key, []byte(val))
+	pipeline.Get(key)
 
 	res, err := pipeline.Exec(ctx)
 	assert.Nil(t, err)
