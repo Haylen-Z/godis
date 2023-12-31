@@ -17,6 +17,7 @@ type Command interface {
 
 type Client interface {
 	Close() error
+	Pipeline() *Pipeline
 
 	// String
 	Get(ctx context.Context, key string) (*[]byte, error)
@@ -35,6 +36,10 @@ func NewClient(address string) Client {
 
 func (c *client) Close() error {
 	return c.conPool.Close()
+}
+
+func (c *client) Pipeline() *Pipeline {
+	return &Pipeline{client: c}
 }
 
 func (c *client) exec(ctx context.Context, cmd Command) (interface{}, error) {
@@ -92,6 +97,49 @@ func getArgs(args []optArg) [][]byte {
 		res = append(res, arg()...)
 	}
 	return stringsToBytes(res)
+}
+
+type Pipeline struct {
+	client   *client
+	commands []Command
+}
+
+func (p *Pipeline) Get(ctx context.Context, key string) {
+	p.commands = append(p.commands, &stringGetCommand{key: key})
+}
+
+func (p *Pipeline) Set(ctx context.Context, key string, value []byte, args ...optArg) {
+	p.commands = append(p.commands, &stringSetCommand{key: key, value: value, optArgs: args})
+}
+
+func (p *Pipeline) Exec(ctx context.Context) ([]interface{}, error) {
+	r, err := p.client.exec(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+	return r.([]interface{}), nil
+}
+
+func (p *Pipeline) SendReq(ctx context.Context, protocol Protocol) error {
+	for _, cmd := range p.commands {
+		err := cmd.SendReq(ctx, protocol)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (p *Pipeline) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	var res []interface{}
+	for _, cmd := range p.commands {
+		r, err := cmd.ReadResp(ctx, protocol)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, r)
+	}
+	return res, nil
 }
 
 type stringGetCommand struct {
