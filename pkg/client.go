@@ -54,7 +54,7 @@ func (c *client) exec(ctx context.Context, cmd Command) (interface{}, error) {
 		}
 	}()
 	protocol := c.newProtocol(con)
-	err = cmd.SendReq(context.Background(), protocol)
+	err = cmd.SendReq(ctx, protocol)
 	if err != nil {
 		return nil, err
 	}
