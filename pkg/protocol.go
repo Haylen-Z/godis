@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"strconv"
@@ -32,13 +33,13 @@ func (e Error) Error() string {
 }
 
 type Protocol interface {
-	ReadBulkString() (*[]byte, error)
-	ReadSimpleString() ([]byte, error)
-	ReadError() (Error, error)
-	GetNextMsgType() (MsgType, error)
+	ReadBulkString(ctx context.Context) (*[]byte, error)
+	ReadSimpleString(ctx context.Context) ([]byte, error)
+	ReadError(ctx context.Context) (Error, error)
+	GetNextMsgType(ctx context.Context) (MsgType, error)
 
-	WriteBulkString(bs []byte) error
-	WriteBulkStringArray(bss [][]byte) error
+	WriteBulkString(ctx context.Context, bs []byte) error
+	WriteBulkStringArray(ctx context.Context, bss [][]byte) error
 }
 
 const (
@@ -54,7 +55,7 @@ var terminator = []byte{'\r', '\n'}
 // Implement RESP protocol
 // https://redis.io/docs/reference/protocol-spec
 type respProtocol struct {
-	rw        io.ReadWriter
+	con       Connection
 	buf       []byte
 	hasRecLen int
 }
@@ -65,11 +66,11 @@ var buffPool = sync.Pool{
 	},
 }
 
-func NewProtocol(rw io.ReadWriter) Protocol {
-	return &respProtocol{rw, buffPool.Get().([]byte), 0}
+func NewProtocol(c Connection) Protocol {
+	return &respProtocol{c, buffPool.Get().([]byte), 0}
 }
 
-func (p *respProtocol) WriteBulkString(s []byte) error {
+func (p *respProtocol) WriteBulkString(ctx context.Context, s []byte) error {
 	// Bulk string example:"$5\r\nhello\r\n"
 
 	var bs []byte
@@ -78,14 +79,14 @@ func (p *respProtocol) WriteBulkString(s []byte) error {
 	bs = append(bs, terminator...)
 	bs = append(bs, s...)
 	bs = append(bs, terminator...)
-	_, err := p.rw.Write(bs)
+	_, err := p.con.Write(ctx, bs)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func (p *respProtocol) readBeforeTerminator() ([]byte, error) {
+func (p *respProtocol) readBeforeTerminator(ctx context.Context) ([]byte, error) {
 	rec := make([]byte, p.hasRecLen)
 	copy(rec, p.buf[:p.hasRecLen])
 	p.hasRecLen = 0
@@ -93,7 +94,7 @@ func (p *respProtocol) readBeforeTerminator() ([]byte, error) {
 	var err error
 	var n int
 	for err == nil && !bytes.Contains(rec, terminator) {
-		n, err = p.rw.Read(p.buf)
+		n, err = p.con.Read(ctx, p.buf)
 		rec = append(rec, p.buf[:n]...)
 	}
 	if err != nil && err != io.EOF {
@@ -109,8 +110,8 @@ func (p *respProtocol) readBeforeTerminator() ([]byte, error) {
 	return res, nil
 }
 
-func (p *respProtocol) getBulkStringLen() (int, error) {
-	rec, err := p.readBeforeTerminator()
+func (p *respProtocol) getBulkStringLen(ctx context.Context) (int, error) {
+	rec, err := p.readBeforeTerminator(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -128,10 +129,10 @@ func (p *respProtocol) getBulkStringLen() (int, error) {
 	return int(strLen), nil
 }
 
-func (p *respProtocol) ReadBulkString() (*[]byte, error) {
+func (p *respProtocol) ReadBulkString(ctx context.Context) (*[]byte, error) {
 	// Bulk string example:"$5\r\nhello\r\n"
 
-	strLen, err := p.getBulkStringLen()
+	strLen, err := p.getBulkStringLen(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -140,17 +141,17 @@ func (p *respProtocol) ReadBulkString() (*[]byte, error) {
 		return nil, nil
 	}
 
-	rec, err := p.readBeforeTerminator()
+	rec, err := p.readBeforeTerminator(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return &rec, nil
 }
 
-func (p *respProtocol) ReadSimpleString() ([]byte, error) {
+func (p *respProtocol) ReadSimpleString(ctx context.Context) ([]byte, error) {
 	// Simple string example:"+OK\r\n"
 
-	rec, err := p.readBeforeTerminator()
+	rec, err := p.readBeforeTerminator(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -162,20 +163,20 @@ func (p *respProtocol) ReadSimpleString() ([]byte, error) {
 	return rec, nil
 }
 
-func (p *respProtocol) WriteBulkStringArray(bss [][]byte) error {
+func (p *respProtocol) WriteBulkStringArray(ctx context.Context, bss [][]byte) error {
 	// Bulk string array example:"*2\r\n$5\r\nhello\r\n$5\r\nworld\r\n"
 
 	pre := []byte{arrayPrefix}
 	pre = append(pre, []byte(strconv.FormatInt(int64(len(bss)), 10))...)
 	pre = append(pre, terminator...)
 
-	_, err := p.rw.Write(pre)
+	_, err := p.con.Write(ctx, pre)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
 	for _, bs := range bss {
-		err = p.WriteBulkString(bs)
+		err = p.WriteBulkString(ctx, bs)
 		if err != nil {
 			return err
 		}
@@ -183,7 +184,7 @@ func (p *respProtocol) WriteBulkStringArray(bss [][]byte) error {
 	return nil
 }
 
-func (p *respProtocol) GetNextMsgType() (MsgType, error) {
+func (p *respProtocol) GetNextMsgType(ctx context.Context) (MsgType, error) {
 	// Simple string example:"+OK\r\n"
 	// Bulk string example:"$5\r\nhello\r\n"
 	// Array example:"*2\r\n$5\r\nhello\r\n$5\r\nworld\r\n"
@@ -191,7 +192,7 @@ func (p *respProtocol) GetNextMsgType() (MsgType, error) {
 	// Error example:"-ERR unknown command 'foobar'\r\n"
 
 	if p.hasRecLen == 0 {
-		n, err := p.rw.Read(p.buf)
+		n, err := p.con.Read(ctx, p.buf)
 		if err != nil {
 			return 0, errors.WithStack(err)
 		}
@@ -214,10 +215,10 @@ func (p *respProtocol) GetNextMsgType() (MsgType, error) {
 	}
 }
 
-func (p *respProtocol) ReadError() (Error, error) {
+func (p *respProtocol) ReadError(ctx context.Context) (Error, error) {
 	// Error example:"-ERR unknown command 'foobar'\r\n"
 
-	rec, err := p.readBeforeTerminator()
+	rec, err := p.readBeforeTerminator(ctx)
 	if err != nil {
 		return Error{}, err
 	}

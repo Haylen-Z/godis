@@ -5,7 +5,9 @@
 package pkg
 
 import (
+	context "context"
 	reflect "reflect"
+	time "time"
 
 	gomock "github.com/golang/mock/gomock"
 )
@@ -61,34 +63,48 @@ func (mr *MockConnectionMockRecorder) Connect() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Connect", reflect.TypeOf((*MockConnection)(nil).Connect))
 }
 
-// Read mocks base method.
-func (m *MockConnection) Read(p []byte) (int, error) {
+// GetLastUsedAt mocks base method.
+func (m *MockConnection) GetLastUsedAt() time.Time {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Read", p)
+	ret := m.ctrl.Call(m, "GetLastUsedAt")
+	ret0, _ := ret[0].(time.Time)
+	return ret0
+}
+
+// GetLastUsedAt indicates an expected call of GetLastUsedAt.
+func (mr *MockConnectionMockRecorder) GetLastUsedAt() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLastUsedAt", reflect.TypeOf((*MockConnection)(nil).GetLastUsedAt))
+}
+
+// Read mocks base method.
+func (m *MockConnection) Read(ctx context.Context, p []byte) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Read", ctx, p)
 	ret0, _ := ret[0].(int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Read indicates an expected call of Read.
-func (mr *MockConnectionMockRecorder) Read(p interface{}) *gomock.Call {
+func (mr *MockConnectionMockRecorder) Read(ctx, p interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Read", reflect.TypeOf((*MockConnection)(nil).Read), p)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Read", reflect.TypeOf((*MockConnection)(nil).Read), ctx, p)
 }
 
 // Write mocks base method.
-func (m *MockConnection) Write(p []byte) (int, error) {
+func (m *MockConnection) Write(ctx context.Context, p []byte) (int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Write", p)
+	ret := m.ctrl.Call(m, "Write", ctx, p)
 	ret0, _ := ret[0].(int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Write indicates an expected call of Write.
-func (mr *MockConnectionMockRecorder) Write(p interface{}) *gomock.Call {
+func (mr *MockConnectionMockRecorder) Write(ctx, p interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Write", reflect.TypeOf((*MockConnection)(nil).Write), p)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Write", reflect.TypeOf((*MockConnection)(nil).Write), ctx, p)
 }
 
 // MockConnectionPool is a mock of ConnectionPool interface.
