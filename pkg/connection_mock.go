@@ -7,6 +7,7 @@ package pkg
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	gomock "github.com/golang/mock/gomock"
 )
@@ -60,6 +61,20 @@ func (m *MockConnection) Connect() error {
 func (mr *MockConnectionMockRecorder) Connect() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Connect", reflect.TypeOf((*MockConnection)(nil).Connect))
+}
+
+// GetLastUsedAt mocks base method.
+func (m *MockConnection) GetLastUsedAt() time.Time {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLastUsedAt")
+	ret0, _ := ret[0].(time.Time)
+	return ret0
+}
+
+// GetLastUsedAt indicates an expected call of GetLastUsedAt.
+func (mr *MockConnectionMockRecorder) GetLastUsedAt() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLastUsedAt", reflect.TypeOf((*MockConnection)(nil).GetLastUsedAt))
 }
 
 // Read mocks base method.
