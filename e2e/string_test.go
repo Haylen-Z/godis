@@ -85,3 +85,26 @@ func TestStringAppend(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "iiiiiiwwwww", string(*val))
 }
+
+func TestStringDecr(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	k := "kk"
+	ctx := context.TODO()
+
+	_, err := client.Set(ctx, k, []byte("0"))
+	assert.Nil(t, err)
+
+	res, err := client.Decr(ctx, k)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(-1), res)
+
+	_, err = client.Set(ctx, k, []byte("100"))
+	assert.Nil(t, err)
+	for i := 0; i < 10; i++ {
+		res, err = client.Decr(ctx, k)
+		assert.Nil(t, err)
+		assert.Equal(t, int64(100-(i+1)), res)
+	}
+}

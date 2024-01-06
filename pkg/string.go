@@ -117,3 +117,28 @@ func (c *client) Append(ctx context.Context, key string, value []byte) (int64, e
 	}
 	return res.(int64), nil
 }
+
+type stringDecrCommand struct {
+	key string
+}
+
+func (c *stringDecrCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	data := [][]byte{
+		[]byte("DECR"),
+		[]byte(c.key),
+	}
+	return protocol.WriteBulkStringArray(ctx, data)
+}
+
+func (c *stringDecrCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	return protocol.ReadInteger(ctx)
+}
+
+func (c *client) Decr(ctx context.Context, key string) (int64, error) {
+	cmd := &stringDecrCommand{key: key}
+	res, err := c.exec(ctx, cmd)
+	if err != nil {
+		return 0, err
+	}
+	return res.(int64), nil
+}

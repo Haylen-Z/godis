@@ -21,6 +21,7 @@ type Client interface {
 	Get(ctx context.Context, key string) (*[]byte, error)
 	Set(ctx context.Context, key string, value []byte, args ...optArg) (bool, error)
 	Append(ctx context.Context, key string, value []byte) (int64, error)
+	Decr(ctx context.Context, key string) (int64, error)
 }
 
 type client struct {
