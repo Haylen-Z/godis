@@ -6,8 +6,6 @@ import (
 
 	"log"
 	"strconv"
-
-	"github.com/pkg/errors"
 )
 
 type Command interface {
@@ -22,6 +20,7 @@ type Client interface {
 	// String
 	Get(ctx context.Context, key string) (*[]byte, error)
 	Set(ctx context.Context, key string, value []byte, args ...optArg) (bool, error)
+	Append(ctx context.Context, key string, value []byte) (int64, error)
 }
 
 type client struct {
@@ -144,89 +143,4 @@ func (p *Pipeline) ReadResp(ctx context.Context, protocol Protocol) (interface{}
 		res = append(res, r)
 	}
 	return res, nil
-}
-
-type stringGetCommand struct {
-	key string
-}
-
-func (c *stringGetCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	data := [][]byte{
-		[]byte("GET"),
-		[]byte(c.key),
-	}
-	return protocol.WriteBulkStringArray(ctx, data)
-}
-
-func (c *stringGetCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
-	return protocol.ReadBulkString(ctx)
-}
-
-func (c *client) Get(ctx context.Context, key string) (*[]byte, error) {
-	cmd := &stringGetCommand{key: key}
-	res, err := c.exec(ctx, cmd)
-	if err != nil {
-		return nil, err
-	}
-	return res.(*[]byte), nil
-}
-
-type stringSetCommand struct {
-	key     string
-	value   []byte
-	optArgs []optArg
-}
-
-func (c *stringSetCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	data := [][]byte{
-		[]byte("SET"),
-		[]byte(c.key),
-		c.value,
-	}
-	data = append(data, getArgs(c.optArgs)...)
-	return protocol.WriteBulkStringArray(ctx, data)
-}
-
-func (c *stringSetCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
-	msgType, err := protocol.GetNextMsgType(ctx)
-	if err != nil {
-		return false, err
-	}
-	switch msgType {
-	case SimpleStringType:
-		res, err := protocol.ReadSimpleString(ctx)
-		if err != nil {
-			return false, err
-		}
-		if string(res) != "OK" {
-			return false, errors.New("unexpected response")
-		}
-		return true, nil
-	case BulkStringType:
-		res, err := protocol.ReadBulkString(ctx)
-		if err != nil {
-			return false, err
-		}
-		if res != nil {
-			return false, errors.New("unexpected response")
-		}
-		return false, nil
-	case ErrorType:
-		resErr, err := protocol.ReadError(ctx)
-		if err != nil {
-			return false, err
-		}
-		return false, resErr
-	default:
-		return false, errors.New("unexpected response")
-	}
-}
-
-func (c *client) Set(ctx context.Context, key string, value []byte, optArgs ...optArg) (bool, error) {
-	cmd := &stringSetCommand{key: key, value: value, optArgs: optArgs}
-	res, err := c.exec(ctx, cmd)
-	if err != nil {
-		return false, err
-	}
-	return res.(bool), nil
 }

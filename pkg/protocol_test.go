@@ -194,3 +194,33 @@ func TestReadSimpleString(t *testing.T) {
 		assert.Equal(t, c.out, string(r))
 	}
 }
+
+func TestReadInteger(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mkCon := NewMockConnection(ctrl)
+
+	var cases = []struct {
+		in  []byte
+		out int64
+	}{
+		{[]byte(":100\r\n"), 100},
+		{[]byte(":-100\r\n"), -100},
+		{[]byte(":0\r\n"), 0},
+		{[]byte(":1234567890\r\n"), 1234567890},
+		{[]byte(":-0\r\n"), 0},
+	}
+
+	var proc Protocol = NewProtocol(mkCon)
+	ctx := context.Background()
+
+	for _, c := range cases {
+		mkCon.EXPECT().Read(ctx, gomock.Any()).Return(len(c.in), nil).Do(func(_ context.Context, buf []byte) {
+			copy(buf, c.in)
+		}).Times(1)
+		r, err := proc.ReadInteger(ctx)
+		assert.Nil(t, err)
+		assert.Equal(t, c.out, r)
+	}
+}

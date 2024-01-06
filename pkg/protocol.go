@@ -37,6 +37,7 @@ type Protocol interface {
 	ReadSimpleString(ctx context.Context) ([]byte, error)
 	ReadError(ctx context.Context) (Error, error)
 	GetNextMsgType(ctx context.Context) (MsgType, error)
+	ReadInteger(ctx context.Context) (int64, error)
 
 	WriteBulkString(ctx context.Context, bs []byte) error
 	WriteBulkStringArray(ctx context.Context, bss [][]byte) error
@@ -236,4 +237,19 @@ func (p *respProtocol) ReadError(ctx context.Context) (Error, error) {
 	errType := string(rec[:idx])
 	errMsg := string(bytes.TrimPrefix(rec[idx:], []byte{' '}))
 	return Error{errType, errMsg}, nil
+}
+
+func (p *respProtocol) ReadInteger(ctx context.Context) (int64, error) {
+	// Integer example:":1000\r\n" ":+10\r\n" ":-1000\r\n"
+
+	rec, err := p.readBeforeTerminator(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if len(rec) == 0 || rec[0] != integerPrefix {
+		return 0, errors.Wrap(errInvalidMsg, "invalid integer prefix")
+	}
+	rec = rec[1:]
+
+	return strconv.ParseInt(string(rec), 10, 64)
 }

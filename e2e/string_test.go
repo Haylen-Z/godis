@@ -55,3 +55,33 @@ func TestConcurrent(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestStringAppend(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	k := "kk"
+	ctx := context.TODO()
+
+	_, err := client.Set(ctx, k, []byte("iii"))
+	assert.Nil(t, err)
+
+	res, err := client.Append(ctx, k, []byte("iii"))
+	assert.Nil(t, err)
+	assert.Equal(t, int64(6), res)
+
+	res, err = client.Append(ctx, k, []byte("wwwww"))
+	assert.Nil(t, err)
+	assert.Equal(t, int64(11), res)
+
+	val, err := client.Get(ctx, k)
+	assert.Nil(t, err)
+	assert.Equal(t, "iiiiiiwwwww", string(*val))
+
+	res, err = client.Append(ctx, k, []byte{})
+	assert.Nil(t, err)
+	assert.Equal(t, int64(11), res)
+	val, err = client.Get(ctx, k)
+	assert.Nil(t, err)
+	assert.Equal(t, "iiiiiiwwwww", string(*val))
+}
