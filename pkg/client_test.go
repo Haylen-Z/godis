@@ -25,39 +25,6 @@ func initTestClient(ctr *gomock.Controller) {
 	}
 }
 
-func TestGet(t *testing.T) {
-	ctr := gomock.NewController(t)
-	defer ctr.Finish()
-	initTestClient(ctr)
-
-	key := []byte("key")
-	res := []byte("value")
-	mkProtocol.EXPECT().WriteBulkStringArray(context.TODO(), [][]byte{
-		[]byte("GET"), key}).Return(nil).Times(1)
-	mkProtocol.EXPECT().ReadBulkString(context.TODO()).Return(&res, nil).Times(1)
-
-	val, err := testClient.Get(context.TODO(), string(key))
-	assert.Nil(t, err)
-	assert.Equal(t, res, *val)
-}
-
-func TestSetWhileReturnOk(t *testing.T) {
-	ctr := gomock.NewController(t)
-	defer ctr.Finish()
-	initTestClient(ctr)
-
-	key := []byte("key")
-	val := []byte("value")
-
-	mkProtocol.EXPECT().WriteBulkStringArray(context.TODO(), [][]byte{[]byte("SET"), key, val}).Return(nil).Times(1)
-	mkProtocol.EXPECT().GetNextMsgType(context.TODO()).Return(MsgType(SimpleStringType), nil).Times(1)
-	mkProtocol.EXPECT().ReadSimpleString(context.TODO()).Return([]byte("OK"), nil).Times(1)
-
-	ret, err := testClient.Set(context.TODO(), string(key), val)
-	assert.Nil(t, err)
-	assert.True(t, ret)
-}
-
 func TestPipeline(t *testing.T) {
 	ctr := gomock.NewController(t)
 	defer ctr.Finish()

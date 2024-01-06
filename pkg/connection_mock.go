@@ -77,6 +77,20 @@ func (mr *MockConnectionMockRecorder) GetLastUsedAt() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLastUsedAt", reflect.TypeOf((*MockConnection)(nil).GetLastUsedAt))
 }
 
+// IsBroken mocks base method.
+func (m *MockConnection) IsBroken() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsBroken")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsBroken indicates an expected call of IsBroken.
+func (mr *MockConnectionMockRecorder) IsBroken() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsBroken", reflect.TypeOf((*MockConnection)(nil).IsBroken))
+}
+
 // Read mocks base method.
 func (m *MockConnection) Read(ctx context.Context, p []byte) (int, error) {
 	m.ctrl.T.Helper()
@@ -90,6 +104,18 @@ func (m *MockConnection) Read(ctx context.Context, p []byte) (int, error) {
 func (mr *MockConnectionMockRecorder) Read(ctx, p interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Read", reflect.TypeOf((*MockConnection)(nil).Read), ctx, p)
+}
+
+// SetBroken mocks base method.
+func (m *MockConnection) SetBroken() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetBroken")
+}
+
+// SetBroken indicates an expected call of SetBroken.
+func (mr *MockConnectionMockRecorder) SetBroken() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetBroken", reflect.TypeOf((*MockConnection)(nil).SetBroken))
 }
 
 // Write mocks base method.

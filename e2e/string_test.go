@@ -55,3 +55,99 @@ func TestConcurrent(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestStringAppend(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	k := "kk"
+	ctx := context.TODO()
+
+	_, err := client.Set(ctx, k, []byte("iii"))
+	assert.Nil(t, err)
+
+	res, err := client.Append(ctx, k, []byte("iii"))
+	assert.Nil(t, err)
+	assert.Equal(t, int64(6), res)
+
+	res, err = client.Append(ctx, k, []byte("wwwww"))
+	assert.Nil(t, err)
+	assert.Equal(t, int64(11), res)
+
+	val, err := client.Get(ctx, k)
+	assert.Nil(t, err)
+	assert.Equal(t, "iiiiiiwwwww", string(*val))
+
+	res, err = client.Append(ctx, k, []byte{})
+	assert.Nil(t, err)
+	assert.Equal(t, int64(11), res)
+	val, err = client.Get(ctx, k)
+	assert.Nil(t, err)
+	assert.Equal(t, "iiiiiiwwwww", string(*val))
+}
+
+func TestStringDecr(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	k := "kk"
+	ctx := context.TODO()
+
+	_, err := client.Set(ctx, k, []byte("0"))
+	assert.Nil(t, err)
+
+	res, err := client.Decr(ctx, k)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(-1), res)
+
+	_, err = client.Set(ctx, k, []byte("100"))
+	assert.Nil(t, err)
+	for i := 0; i < 10; i++ {
+		res, err = client.Decr(ctx, k)
+		assert.Nil(t, err)
+		assert.Equal(t, int64(100-(i+1)), res)
+	}
+}
+
+func TestStringDecrBy(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	k := "kk"
+	ctx := context.TODO()
+
+	_, err := client.Set(ctx, k, []byte("0"))
+	assert.Nil(t, err)
+
+	res, err := client.DecrBy(ctx, k, 2)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(-2), res)
+
+	res, err = client.DecrBy(ctx, k, -3)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(1), res)
+}
+
+func TestStringGetAndDel(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+
+	k := "kkk34213"
+	res, err := client.GetDel(ctx, k)
+
+	assert.Nil(t, err)
+	assert.Nil(t, res)
+
+	_, err = client.Set(ctx, k, []byte("hello"))
+	assert.Nil(t, err)
+
+	res, err = client.GetDel(ctx, k)
+	assert.Nil(t, err)
+	assert.Equal(t, "hello", string(*res))
+
+	res, err = client.Get(ctx, k)
+	assert.Nil(t, err)
+	assert.Nil(t, res)
+}

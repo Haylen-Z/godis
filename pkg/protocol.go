@@ -19,6 +19,7 @@ const (
 	ArrayType
 	IntegerType
 	ErrorType
+	NullType
 )
 
 var errInvalidMsg = fmt.Errorf("invalid msg type")
@@ -37,6 +38,8 @@ type Protocol interface {
 	ReadSimpleString(ctx context.Context) ([]byte, error)
 	ReadError(ctx context.Context) (Error, error)
 	GetNextMsgType(ctx context.Context) (MsgType, error)
+	ReadInteger(ctx context.Context) (int64, error)
+	ReadNull(ctx context.Context) error
 
 	WriteBulkString(ctx context.Context, bs []byte) error
 	WriteBulkStringArray(ctx context.Context, bss [][]byte) error
@@ -48,6 +51,7 @@ const (
 	simpleStringPrefix = '+'
 	errorPrefix        = '-'
 	integerPrefix      = ':'
+	nullPrefix         = '_'
 )
 
 var terminator = []byte{'\r', '\n'}
@@ -81,6 +85,7 @@ func (p *respProtocol) WriteBulkString(ctx context.Context, s []byte) error {
 	bs = append(bs, terminator...)
 	_, err := p.con.Write(ctx, bs)
 	if err != nil {
+		p.con.SetBroken()
 		return errors.WithStack(err)
 	}
 	return nil
@@ -98,7 +103,7 @@ func (p *respProtocol) readBeforeTerminator(ctx context.Context) ([]byte, error)
 		rec = append(rec, p.buf[:n]...)
 	}
 	if err != nil && err != io.EOF {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrap(err, "failed to read from connection")
 	}
 
 	terIdx := bytes.Index(rec, terminator)
@@ -190,6 +195,7 @@ func (p *respProtocol) GetNextMsgType(ctx context.Context) (MsgType, error) {
 	// Array example:"*2\r\n$5\r\nhello\r\n$5\r\nworld\r\n"
 	// Integer example:":1000\r\n"
 	// Error example:"-ERR unknown command 'foobar'\r\n"
+	// Null: _\r\n
 
 	if p.hasRecLen == 0 {
 		n, err := p.con.Read(ctx, p.buf)
@@ -210,6 +216,8 @@ func (p *respProtocol) GetNextMsgType(ctx context.Context) (MsgType, error) {
 		return IntegerType, nil
 	case errorPrefix:
 		return ErrorType, nil
+	case nullPrefix:
+		return NullType, nil
 	default:
 		return 0, errors.WithStack(errInvalidMsg)
 	}
@@ -235,4 +243,32 @@ func (p *respProtocol) ReadError(ctx context.Context) (Error, error) {
 	errType := string(rec[:idx])
 	errMsg := string(bytes.TrimPrefix(rec[idx:], []byte{' '}))
 	return Error{errType, errMsg}, nil
+}
+
+func (p *respProtocol) ReadInteger(ctx context.Context) (int64, error) {
+	// Integer example:":1000\r\n" ":+10\r\n" ":-1000\r\n"
+
+	rec, err := p.readBeforeTerminator(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if len(rec) == 0 || rec[0] != integerPrefix {
+		return 0, errors.Wrap(errInvalidMsg, "invalid integer prefix")
+	}
+	rec = rec[1:]
+
+	return strconv.ParseInt(string(rec), 10, 64)
+}
+
+func (p *respProtocol) ReadNull(ctx context.Context) error {
+	// Null: _\r\n
+
+	rec, err := p.readBeforeTerminator(ctx)
+	if err != nil {
+		return err
+	}
+	if len(rec) == 0 || rec[0] != nullPrefix {
+		return errors.Wrap(errInvalidMsg, "invalid null prefix")
+	}
+	return nil
 }
