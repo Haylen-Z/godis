@@ -19,6 +19,7 @@ const (
 	ArrayType
 	IntegerType
 	ErrorType
+	NullType
 )
 
 var errInvalidMsg = fmt.Errorf("invalid msg type")
@@ -38,6 +39,7 @@ type Protocol interface {
 	ReadError(ctx context.Context) (Error, error)
 	GetNextMsgType(ctx context.Context) (MsgType, error)
 	ReadInteger(ctx context.Context) (int64, error)
+	ReadNull(ctx context.Context) error
 
 	WriteBulkString(ctx context.Context, bs []byte) error
 	WriteBulkStringArray(ctx context.Context, bss [][]byte) error
@@ -49,6 +51,7 @@ const (
 	simpleStringPrefix = '+'
 	errorPrefix        = '-'
 	integerPrefix      = ':'
+	nullPrefix         = '_'
 )
 
 var terminator = []byte{'\r', '\n'}
@@ -192,6 +195,7 @@ func (p *respProtocol) GetNextMsgType(ctx context.Context) (MsgType, error) {
 	// Array example:"*2\r\n$5\r\nhello\r\n$5\r\nworld\r\n"
 	// Integer example:":1000\r\n"
 	// Error example:"-ERR unknown command 'foobar'\r\n"
+	// Null: _\r\n
 
 	if p.hasRecLen == 0 {
 		n, err := p.con.Read(ctx, p.buf)
@@ -212,6 +216,8 @@ func (p *respProtocol) GetNextMsgType(ctx context.Context) (MsgType, error) {
 		return IntegerType, nil
 	case errorPrefix:
 		return ErrorType, nil
+	case nullPrefix:
+		return NullType, nil
 	default:
 		return 0, errors.WithStack(errInvalidMsg)
 	}
@@ -252,4 +258,17 @@ func (p *respProtocol) ReadInteger(ctx context.Context) (int64, error) {
 	rec = rec[1:]
 
 	return strconv.ParseInt(string(rec), 10, 64)
+}
+
+func (p *respProtocol) ReadNull(ctx context.Context) error {
+	// Null: _\r\n
+
+	rec, err := p.readBeforeTerminator(ctx)
+	if err != nil {
+		return err
+	}
+	if len(rec) == 0 || rec[0] != nullPrefix {
+		return errors.Wrap(errInvalidMsg, "invalid null prefix")
+	}
+	return nil
 }

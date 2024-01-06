@@ -126,12 +126,28 @@ func TestStringDecrBy(t *testing.T) {
 	res, err = client.DecrBy(ctx, k, -3)
 	assert.Nil(t, err)
 	assert.Equal(t, int64(1), res)
+}
 
-	// _, err = client.Set(ctx, k, []byte("100"))
-	// assert.Nil(t, err)
-	// for i := 0; i < 10; i++ {
-	// 	res, err = client.Decr(ctx, k)
-	// 	assert.Nil(t, err)
-	// 	assert.Equal(t, int64(100-(i+1)), res)
-	// }
+func TestStringGetAndDel(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+
+	k := "kkk34213"
+	res, err := client.GetDel(ctx, k)
+
+	assert.Nil(t, err)
+	assert.Nil(t, res)
+
+	_, err = client.Set(ctx, k, []byte("hello"))
+	assert.Nil(t, err)
+
+	res, err = client.GetDel(ctx, k)
+	assert.Nil(t, err)
+	assert.Equal(t, "hello", string(*res))
+
+	res, err = client.Get(ctx, k)
+	assert.Nil(t, err)
+	assert.Nil(t, res)
 }

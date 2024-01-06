@@ -19,10 +19,11 @@ type Client interface {
 
 	// String
 	Get(ctx context.Context, key string) (*[]byte, error)
-	Set(ctx context.Context, key string, value []byte, args ...optArg) (bool, error)
+	Set(ctx context.Context, key string, value []byte, args ...arg) (bool, error)
 	Append(ctx context.Context, key string, value []byte) (int64, error)
 	Decr(ctx context.Context, key string) (int64, error)
 	DecrBy(ctx context.Context, key string, decrement int64) (int64, error)
+	GetDel(ctx context.Context, key string) (*[]byte, error)
 }
 
 type client struct {
@@ -66,23 +67,23 @@ func (c *client) exec(ctx context.Context, cmd Command) (res interface{}, err er
 	return cmd.ReadResp(ctx, protocol)
 }
 
-type optArg func() []string
+type arg func() []string
 
-var NXArg optArg = func() []string {
+var NXArg arg = func() []string {
 	return []string{"NX"}
 }
 
-var XXArg optArg = func() []string {
+var XXArg arg = func() []string {
 	return []string{"XX"}
 }
 
-func EXArg(seconds int) optArg {
+func EXArg(seconds int) arg {
 	return func() []string {
 		return []string{"EX", strconv.Itoa(seconds)}
 	}
 }
 
-func PXArg(miliseconds int) optArg {
+func PXArg(miliseconds int) arg {
 	return func() []string {
 		return []string{"PX", strconv.Itoa(miliseconds)}
 	}
@@ -96,7 +97,7 @@ func stringsToBytes(strs []string) [][]byte {
 	return res
 }
 
-func getArgs(args []optArg) [][]byte {
+func getArgs(args []arg) [][]byte {
 	var res []string
 	for _, arg := range args {
 		res = append(res, arg()...)
@@ -113,7 +114,7 @@ func (p *Pipeline) Get(key string) {
 	p.commands = append(p.commands, &stringGetCommand{key: key})
 }
 
-func (p *Pipeline) Set(key string, value []byte, args ...optArg) {
+func (p *Pipeline) Set(key string, value []byte, args ...arg) {
 	p.commands = append(p.commands, &stringSetCommand{key: key, value: value, optArgs: args})
 }
 

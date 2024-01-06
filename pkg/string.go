@@ -35,7 +35,7 @@ func (c *client) Get(ctx context.Context, key string) (*[]byte, error) {
 type stringSetCommand struct {
 	key     string
 	value   []byte
-	optArgs []optArg
+	optArgs []arg
 }
 
 func (c *stringSetCommand) SendReq(ctx context.Context, protocol Protocol) error {
@@ -83,7 +83,7 @@ func (c *stringSetCommand) ReadResp(ctx context.Context, protocol Protocol) (int
 	}
 }
 
-func (c *client) Set(ctx context.Context, key string, value []byte, optArgs ...optArg) (bool, error) {
+func (c *client) Set(ctx context.Context, key string, value []byte, optArgs ...arg) (bool, error) {
 	cmd := &stringSetCommand{key: key, value: value, optArgs: optArgs}
 	res, err := c.exec(ctx, cmd)
 	if err != nil {
@@ -169,4 +169,41 @@ func (c *client) DecrBy(ctx context.Context, key string, decrement int64) (int64
 		return 0, err
 	}
 	return res.(int64), nil
+}
+
+type stringGetDelCommand struct {
+	key string
+}
+
+func (c *stringGetDelCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	data := [][]byte{
+		[]byte("GETDEL"),
+		[]byte(c.key),
+	}
+	return protocol.WriteBulkStringArray(ctx, data)
+}
+
+func (c *stringGetDelCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	msgType, err := protocol.GetNextMsgType(ctx)
+	if err != nil {
+		return nil, err
+	}
+	switch msgType {
+	case BulkStringType:
+		return protocol.ReadBulkString(ctx)
+	case NullType:
+		err := protocol.ReadNull(ctx)
+		return (*[]byte)(nil), err
+	default:
+		return (*[]byte)(nil), errors.New("unexpected response")
+	}
+}
+
+func (c *client) GetDel(ctx context.Context, key string) (*[]byte, error) {
+	cmd := &stringGetDelCommand{key: key}
+	res, err := c.exec(ctx, cmd)
+	if err != nil {
+		return nil, err
+	}
+	return res.(*[]byte), nil
 }
