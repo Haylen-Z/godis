@@ -42,13 +42,17 @@ func (c *client) Pipeline() *Pipeline {
 	return &Pipeline{client: c}
 }
 
-func (c *client) exec(ctx context.Context, cmd Command) (interface{}, error) {
-	con, err := c.conPool.GetConnection()
+func (c *client) exec(ctx context.Context, cmd Command) (res interface{}, err error) {
+	var con Connection
+	con, err = c.conPool.GetConnection()
 	if err != nil {
-		return nil, err
+		return
 	}
 	defer func() {
-		err := c.conPool.Release(con)
+		if err != nil {
+			con.SetBroken()
+		}
+		err = c.conPool.Release(con)
 		if err != nil {
 			log.Println(err)
 		}
@@ -56,7 +60,7 @@ func (c *client) exec(ctx context.Context, cmd Command) (interface{}, error) {
 	protocol := c.newProtocol(con)
 	err = cmd.SendReq(ctx, protocol)
 	if err != nil {
-		return nil, err
+		return
 	}
 	return cmd.ReadResp(ctx, protocol)
 }

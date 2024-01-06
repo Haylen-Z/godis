@@ -14,6 +14,8 @@ type Connection interface {
 	Read(ctx context.Context, p []byte) (n int, err error)
 	Write(ctx context.Context, p []byte) (n int, err error)
 	GetLastUsedAt() time.Time
+	IsBroken() bool
+	SetBroken()
 	Connect() error
 	Close() error
 }
@@ -24,6 +26,15 @@ type connection struct {
 	con        net.Conn
 	address    string
 	lastUsedAt time.Time
+	broken     bool
+}
+
+func (c *connection) IsBroken() bool {
+	return c.broken
+}
+
+func (c *connection) SetBroken() {
+	c.broken = true
 }
 
 func (c *connection) GetLastUsedAt() time.Time {
@@ -57,10 +68,13 @@ func (c *connection) Read(ctx context.Context, p []byte) (n int, err error) {
 
 	if dl, ok := ctx.Deadline(); ok {
 		if err := c.con.SetReadDeadline(dl); err != nil {
-			return 0, err
+			return 0, errors.Wrap(err, "failed to set read deadline")
 		}
 	}
 	n, err = c.con.Read(p)
+	if err != nil {
+		return n, errors.Wrap(err, "failed to read from connection")
+	}
 	c.lastUsedAt = time.Now()
 	return
 }
@@ -72,10 +86,13 @@ func (c *connection) Write(ctx context.Context, p []byte) (n int, err error) {
 
 	if dl, ok := ctx.Deadline(); ok {
 		if err := c.con.SetWriteDeadline(dl); err != nil {
-			return 0, err
+			return 0, errors.Wrap(err, "failed to set write deadline")
 		}
 	}
 	n, err = c.con.Write(p)
+	if err != nil {
+		return n, errors.Wrap(err, "failed to write to connection")
+	}
 	c.lastUsedAt = time.Now()
 	return
 }
@@ -89,9 +106,6 @@ type ConnectionPool interface {
 	Release(Connection) error
 	Close() error
 }
-
-var ClosedPoolError = errors.New("connection pool is closed")
-var ConnectionPoolFullError = errors.New("connection pool is full")
 
 var defaultConIdleTime = 30 * time.Minute
 
@@ -170,6 +184,13 @@ func (p *connectionPool) Release(conn Connection) error {
 
 	if p.closed {
 		return ClosedPoolError
+	}
+
+	if conn.IsBroken() {
+		p.AllConNum--
+		p.UsedConNum--
+		p.conCloseChan <- conn
+		return nil
 	}
 
 	p.pool = append(p.pool, conn)

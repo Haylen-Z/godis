@@ -95,6 +95,7 @@ func getMockConnectionPool(ctrl *gomock.Controller) *connectionPool {
 			c.EXPECT().Connect().Return(nil).Times(1)
 			c.EXPECT().Close().Return(nil).Times(1)
 			c.EXPECT().GetLastUsedAt().Return(time.Now()).AnyTimes()
+			c.EXPECT().IsBroken().Return(false).AnyTimes()
 			return c
 		},
 		mutex:       &sync.Mutex{},
@@ -122,14 +123,6 @@ func TestConnection(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 0, cp.UsedConNum)
 	assert.Equal(t, 1, len(cp.pool))
-
-	// New connection when no healthy connection in pool
-	// conn.(*MockConnection).EXPECT().GetLastUsedAt().Return(time.Now().Add(-time.Hour)).Times(1)
-	// conn2, err := cp.GetConnection()
-	// assert.Nil(t, err)
-	// assert.False(t, conn == conn2)
-	// err = cp.Release(conn2)
-	// assert.Nil(t, err)
 
 	// Pool is full
 	cons := []Connection{}
@@ -181,6 +174,7 @@ func TestNewConnectionWhenNoHealthyConnectionInPool(t *testing.T) {
 		c := NewMockConnection(ctrl)
 		c.EXPECT().Connect().Return(nil).Times(1)
 		c.EXPECT().Close().Return(nil).Times(1)
+		c.EXPECT().IsBroken().Return(false).AnyTimes()
 		return c
 	}
 
@@ -199,6 +193,32 @@ func TestNewConnectionWhenNoHealthyConnectionInPool(t *testing.T) {
 
 	err = cp.Close()
 	assert.Nil(t, err)
+
+	// Wait for closeConWorker
+	time.Sleep(time.Millisecond)
+}
+
+func TestReleaseBrokenConnectin(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	cp := getMockConnectionPool(ctrl)
+	cp.newConnection = func(address string) Connection {
+		c := NewMockConnection(ctrl)
+		c.EXPECT().Connect().Return(nil).Times(1)
+		c.EXPECT().Close().Return(nil).Times(1)
+		c.EXPECT().GetLastUsedAt().Return(time.Now()).AnyTimes()
+		c.EXPECT().IsBroken().Return(true).Times(1)
+		return c
+	}
+
+	conn, err := cp.GetConnection()
+	assert.Nil(t, err)
+	err = cp.Release(conn)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, cp.AllConNum)
+	assert.Equal(t, 0, cp.UsedConNum)
+	assert.Equal(t, 0, len(cp.pool))
 
 	// Wait for closeConWorker
 	time.Sleep(time.Millisecond)

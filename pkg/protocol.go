@@ -81,6 +81,7 @@ func (p *respProtocol) WriteBulkString(ctx context.Context, s []byte) error {
 	bs = append(bs, terminator...)
 	_, err := p.con.Write(ctx, bs)
 	if err != nil {
+		p.con.SetBroken()
 		return errors.WithStack(err)
 	}
 	return nil
@@ -98,7 +99,7 @@ func (p *respProtocol) readBeforeTerminator(ctx context.Context) ([]byte, error)
 		rec = append(rec, p.buf[:n]...)
 	}
 	if err != nil && err != io.EOF {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrap(err, "failed to read from connection")
 	}
 
 	terIdx := bytes.Index(rec, terminator)
