@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/pkg/errors"
 )
@@ -118,11 +119,11 @@ func (c *client) Append(ctx context.Context, key string, value []byte) (int64, e
 	return res.(int64), nil
 }
 
-type stringDecrCommand struct {
+type integerResCommand struct {
 	key string
 }
 
-func (c *stringDecrCommand) SendReq(ctx context.Context, protocol Protocol) error {
+func (c *integerResCommand) SendReq(ctx context.Context, protocol Protocol) error {
 	data := [][]byte{
 		[]byte("DECR"),
 		[]byte(c.key),
@@ -130,12 +131,39 @@ func (c *stringDecrCommand) SendReq(ctx context.Context, protocol Protocol) erro
 	return protocol.WriteBulkStringArray(ctx, data)
 }
 
-func (c *stringDecrCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+func (c *integerResCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
 	return protocol.ReadInteger(ctx)
 }
 
 func (c *client) Decr(ctx context.Context, key string) (int64, error) {
-	cmd := &stringDecrCommand{key: key}
+	cmd := &integerResCommand{key: key}
+	res, err := c.exec(ctx, cmd)
+	if err != nil {
+		return 0, err
+	}
+	return res.(int64), nil
+}
+
+type integerDecrByCommand struct {
+	key       string
+	decrement int64
+}
+
+func (c *integerDecrByCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	data := [][]byte{
+		[]byte("DECRBY"),
+		[]byte(c.key),
+		[]byte(strconv.FormatInt(c.decrement, 10)),
+	}
+	return protocol.WriteBulkStringArray(ctx, data)
+}
+
+func (c *integerDecrByCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	return protocol.ReadInteger(ctx)
+}
+
+func (c *client) DecrBy(ctx context.Context, key string, decrement int64) (int64, error) {
+	cmd := &integerDecrByCommand{key: key, decrement: decrement}
 	res, err := c.exec(ctx, cmd)
 	if err != nil {
 		return 0, err
