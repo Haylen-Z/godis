@@ -65,6 +65,6 @@ func (p *Pipeline) GetDel(key string) {
 	p.commands = append(p.commands, &stringGetDelCommand{key: key})
 }
 
-func (p *Pipeline) GetEX(ctx context.Context, key string, optArgs ...arg) {
-	p.commands = append(p.commands, &integerResCommand{key: key})
+func (p *Pipeline) GetEX(key string, optArgs ...arg) {
+	p.commands = append(p.commands, &stringGetEXCommand{key: key})
 }

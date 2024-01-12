@@ -53,8 +53,8 @@ func (c *client) exec(ctx context.Context, cmd Command) (res interface{}, err er
 		if err != nil {
 			con.SetBroken()
 		}
-		err = c.conPool.Release(con)
-		if err != nil {
+		err1 := c.conPool.Release(con)
+		if err1 != nil {
 			log.Println(err)
 		}
 	}()
