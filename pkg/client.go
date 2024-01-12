@@ -6,6 +6,8 @@ import (
 
 	"log"
 	"strconv"
+
+	"github.com/pkg/errors"
 )
 
 type Command interface {
@@ -24,6 +26,7 @@ type Client interface {
 	Decr(ctx context.Context, key string) (int64, error)
 	DecrBy(ctx context.Context, key string, decrement int64) (int64, error)
 	GetDel(ctx context.Context, key string) (*[]byte, error)
+	GetEX(ctx context.Context, key string, args ...arg) (*[]byte, error)
 }
 
 type client struct {
@@ -73,16 +76,32 @@ var XXArg arg = func() []string {
 	return []string{"XX"}
 }
 
-func EXArg(seconds int) arg {
+func EXArg(seconds uint64) arg {
 	return func() []string {
-		return []string{"EX", strconv.Itoa(seconds)}
+		return []string{"EX", strconv.FormatUint(seconds, 10)}
 	}
 }
 
-func PXArg(miliseconds int) arg {
+func PXArg(miliseconds uint64) arg {
 	return func() []string {
-		return []string{"PX", strconv.Itoa(miliseconds)}
+		return []string{"PX", strconv.FormatUint(miliseconds, 10)}
 	}
+}
+
+func EXATArg(unixTimeSeconds uint64) arg {
+	return func() []string {
+		return []string{"EXAT", strconv.FormatUint(unixTimeSeconds, 10)}
+	}
+}
+
+func PXATArg(unixTimeMiliseconds uint64) arg {
+	return func() []string {
+		return []string{"PXAT", strconv.FormatUint(unixTimeMiliseconds, 10)}
+	}
+}
+
+var PERSISTArg arg = func() []string {
+	return []string{"PERSIST"}
 }
 
 func stringsToBytes(strs []string) [][]byte {
@@ -99,4 +118,39 @@ func getArgs(args []arg) [][]byte {
 		res = append(res, arg()...)
 	}
 	return stringsToBytes(res)
+}
+
+func sendReqWithKey(ctx context.Context, protocol Protocol, cmd string, key string, args []arg) error {
+	data := [][]byte{
+		[]byte(cmd),
+		[]byte(key),
+	}
+	data = append(data, getArgs(args)...)
+	return protocol.WriteBulkStringArray(ctx, data)
+}
+
+func sendReqWithKeyValue(ctx context.Context, protocol Protocol, cmd string, key string, value []byte, args []arg) error {
+	data := [][]byte{
+		[]byte(cmd),
+		[]byte(key),
+		value,
+	}
+	data = append(data, getArgs(args)...)
+	return protocol.WriteBulkStringArray(ctx, data)
+}
+
+func readRespStringOrNil(ctx context.Context, protocol Protocol) (interface{}, error) {
+	msgType, err := protocol.GetNextMsgType(ctx)
+	if err != nil {
+		return nil, err
+	}
+	switch msgType {
+	case BulkStringType:
+		return protocol.ReadBulkString(ctx)
+	case NullType:
+		err := protocol.ReadNull(ctx)
+		return (*[]byte)(nil), err
+	default:
+		return (*[]byte)(nil), errors.New("unexpected response")
+	}
 }

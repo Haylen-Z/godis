@@ -12,11 +12,7 @@ type stringGetCommand struct {
 }
 
 func (c *stringGetCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	data := [][]byte{
-		[]byte("GET"),
-		[]byte(c.key),
-	}
-	return protocol.WriteBulkStringArray(ctx, data)
+	return sendReqWithKey(ctx, protocol, "GET", c.key, nil)
 }
 
 func (c *stringGetCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
@@ -33,19 +29,13 @@ func (c *client) Get(ctx context.Context, key string) (*[]byte, error) {
 }
 
 type stringSetCommand struct {
-	key     string
-	value   []byte
-	optArgs []arg
+	key   string
+	value []byte
+	args  []arg
 }
 
 func (c *stringSetCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	data := [][]byte{
-		[]byte("SET"),
-		[]byte(c.key),
-		c.value,
-	}
-	data = append(data, getArgs(c.optArgs)...)
-	return protocol.WriteBulkStringArray(ctx, data)
+	return sendReqWithKeyValue(ctx, protocol, "SET", c.key, c.value, c.args)
 }
 
 func (c *stringSetCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
@@ -84,7 +74,7 @@ func (c *stringSetCommand) ReadResp(ctx context.Context, protocol Protocol) (int
 }
 
 func (c *client) Set(ctx context.Context, key string, value []byte, optArgs ...arg) (bool, error) {
-	cmd := &stringSetCommand{key: key, value: value, optArgs: optArgs}
+	cmd := &stringSetCommand{key: key, value: value, args: optArgs}
 	res, err := c.exec(ctx, cmd)
 	if err != nil {
 		return false, err
@@ -98,12 +88,7 @@ type stringAppendCommand struct {
 }
 
 func (c *stringAppendCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	data := [][]byte{
-		[]byte("APPEND"),
-		[]byte(c.key),
-		c.value,
-	}
-	return protocol.WriteBulkStringArray(ctx, data)
+	return sendReqWithKeyValue(ctx, protocol, "APPEND", c.key, c.value, nil)
 }
 
 func (c *stringAppendCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
@@ -124,11 +109,7 @@ type integerResCommand struct {
 }
 
 func (c *integerResCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	data := [][]byte{
-		[]byte("DECR"),
-		[]byte(c.key),
-	}
-	return protocol.WriteBulkStringArray(ctx, data)
+	return sendReqWithKey(ctx, protocol, "Decr", c.key, nil)
 }
 
 func (c *integerResCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
@@ -150,12 +131,7 @@ type integerDecrByCommand struct {
 }
 
 func (c *integerDecrByCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	data := [][]byte{
-		[]byte("DECRBY"),
-		[]byte(c.key),
-		[]byte(strconv.FormatInt(c.decrement, 10)),
-	}
-	return protocol.WriteBulkStringArray(ctx, data)
+	return sendReqWithKeyValue(ctx, protocol, "DECRBY", c.key, []byte(strconv.FormatInt(c.decrement, 10)), nil)
 }
 
 func (c *integerDecrByCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
@@ -176,31 +152,37 @@ type stringGetDelCommand struct {
 }
 
 func (c *stringGetDelCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	data := [][]byte{
-		[]byte("GETDEL"),
-		[]byte(c.key),
-	}
-	return protocol.WriteBulkStringArray(ctx, data)
+	return sendReqWithKey(ctx, protocol, "GETDEL", c.key, nil)
 }
 
 func (c *stringGetDelCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
-	msgType, err := protocol.GetNextMsgType(ctx)
-	if err != nil {
-		return nil, err
-	}
-	switch msgType {
-	case BulkStringType:
-		return protocol.ReadBulkString(ctx)
-	case NullType:
-		err := protocol.ReadNull(ctx)
-		return (*[]byte)(nil), err
-	default:
-		return (*[]byte)(nil), errors.New("unexpected response")
-	}
+	return readRespStringOrNil(ctx, protocol)
 }
 
 func (c *client) GetDel(ctx context.Context, key string) (*[]byte, error) {
 	cmd := &stringGetDelCommand{key: key}
+	res, err := c.exec(ctx, cmd)
+	if err != nil {
+		return nil, err
+	}
+	return res.(*[]byte), nil
+}
+
+type stringGetEXCommand struct {
+	key  string
+	args []arg
+}
+
+func (c *stringGetEXCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	return sendReqWithKey(ctx, protocol, "GETEX", c.key, c.args)
+}
+
+func (c *stringGetEXCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	return readRespStringOrNil(ctx, protocol)
+}
+
+func (c *client) GetEX(ctx context.Context, key string, optArgs ...arg) (*[]byte, error) {
+	cmd := &stringGetEXCommand{key: key, args: optArgs}
 	res, err := c.exec(ctx, cmd)
 	if err != nil {
 		return nil, err

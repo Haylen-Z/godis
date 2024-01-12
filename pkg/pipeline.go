@@ -46,7 +46,7 @@ func (p *Pipeline) Get(key string) {
 }
 
 func (p *Pipeline) Set(key string, value []byte, args ...arg) {
-	p.commands = append(p.commands, &stringSetCommand{key: key, value: value, optArgs: args})
+	p.commands = append(p.commands, &stringSetCommand{key: key, value: value, args: args})
 }
 
 func (p *Pipeline) Append(key string, value []byte) {
@@ -63,4 +63,8 @@ func (p *Pipeline) DecrBy(key string, decrement int64) {
 
 func (p *Pipeline) GetDel(key string) {
 	p.commands = append(p.commands, &stringGetDelCommand{key: key})
+}
+
+func (p *Pipeline) GetEX(ctx context.Context, key string, optArgs ...arg) {
+	p.commands = append(p.commands, &integerResCommand{key: key})
 }

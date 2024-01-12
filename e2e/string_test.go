@@ -151,3 +151,28 @@ func TestStringGetAndDel(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Nil(t, res)
 }
+
+func TestGetEX(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+
+	k := "kgetex"
+	res, err := client.GetEX(ctx, k)
+	assert.Nil(t, err)
+	assert.Nil(t, res)
+
+	_, err = client.Set(ctx, k, []byte("hello"))
+	assert.Nil(t, err)
+
+	res, err = client.GetEX(ctx, k)
+	assert.Nil(t, err)
+	assert.Equal(t, "hello", string(*res))
+
+	_, err = client.GetEX(ctx, k, pkg.EXATArg(100))
+	assert.Nil(t, err)
+
+	_, err = client.GetEX(ctx, k, pkg.PXATArg(100))
+	assert.Nil(t, err)
+}

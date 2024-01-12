@@ -14,7 +14,7 @@ func TestStringPipeline(t *testing.T) {
 	pipeline := client.Pipeline()
 	ctx := context.Background()
 
-	key := "hello"
+	key := "kstringpipeline"
 	val := "world"
 
 	pipeline.Set(key, []byte(val))
