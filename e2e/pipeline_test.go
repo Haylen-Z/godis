@@ -29,7 +29,8 @@ func TestStringPipeline(t *testing.T) {
 	assert.Equal(t, int64(6), res[2].(int64))
 	assert.Equal(t, val+"1", string(*res[3].(*[]byte)))
 
-	client.Set(ctx, key, []byte("1"))
+	_, err = client.Set(ctx, key, []byte("1"))
+	assert.Nil(t, err)
 	pipeline = client.Pipeline()
 	pipeline.Decr(key)
 	pipeline.DecrBy(key, 2)
