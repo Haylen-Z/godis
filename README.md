@@ -1,6 +1,6 @@
 # godis
 
-A Redis client of Go.
+A Redis client for Go.
 
 ## Getting started
 
