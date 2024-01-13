@@ -20,13 +20,12 @@ type Connection interface {
 	Close() error
 }
 
-var connectTimeOut = 500 * time.Millisecond
-
 type connection struct {
-	con        net.Conn
-	address    string
-	lastUsedAt time.Time
-	broken     bool
+	con         net.Conn
+	address     string
+	lastUsedAt  time.Time
+	broken      bool
+	dialTimeOut time.Duration
 }
 
 func (c *connection) IsBroken() bool {
@@ -53,7 +52,7 @@ func (c *connection) Connect() error {
 	}
 
 	var err error
-	c.con, err = net.DialTimeout("tcp", c.address, connectTimeOut)
+	c.con, err = net.DialTimeout("tcp", c.address, c.dialTimeOut)
 	if err != nil {
 		return errors.Wrap(err, "failed to connect to "+c.address)
 	}
@@ -107,24 +106,24 @@ type ConnectionPool interface {
 	Close() error
 }
 
-var defaultConIdleTime = 30 * time.Minute
-
 type connectionPool struct {
-	address       string
-	UsedConNum    int
-	AllConNum     int
-	MaxConNum     int
-	pool          []Connection
-	newConnection func(address string) Connection
-	mutex         *sync.Mutex
-	closed        bool
-	conIdleTime   time.Duration
-	conCloseChan  chan Connection
+	address        string
+	UsedConNum     uint
+	AllConNum      uint
+	MaxConNum      uint
+	pool           []Connection
+	newConnection  func(address string) Connection
+	mutex          *sync.Mutex
+	closed         bool
+	conIdleTime    time.Duration
+	conDialTimeOut time.Duration
+	conCloseChan   chan Connection
 }
 
-func NewConnectionPool(address string, maxConNum int) ConnectionPool {
+func NewConnectionPool(address string, maxConNum uint, conDialTimeOut time.Duration, conIdleTime time.Duration) ConnectionPool {
 	p := &connectionPool{mutex: &sync.Mutex{}, address: address, MaxConNum: maxConNum,
-		newConnection: NewConnection, conIdleTime: defaultConIdleTime, conCloseChan: make(chan Connection)}
+		newConnection: NewConnection, conIdleTime: conIdleTime, conCloseChan: make(chan Connection),
+		conDialTimeOut: conDialTimeOut}
 	p.startCloseConWorker()
 	return p
 

@@ -20,7 +20,10 @@ func initTestClient(ctr *gomock.Controller) {
 		return mkProtocol
 	}
 
-	testClient = &client{address: "1.1.1.1:6379", conPool: mkPool,
+	config := &ClientConfig{
+		Address: "1.1.1.1:6379",
+	}
+	testClient = &client{config: config, conPool: mkPool,
 		newProtocol: newProtocol,
 	}
 }

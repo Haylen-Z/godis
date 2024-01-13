@@ -3,10 +3,45 @@ package pkg
 import (
 	"context"
 	"math"
+	"time"
 
 	"log"
 	"strconv"
+
+	"github.com/pkg/errors"
 )
+
+const (
+	defalutPoolMaxConns = math.MaxUint
+	defaultDailTimeOut  = time.Second
+	defaultConIdleTime  = 30 * time.Minute
+)
+
+type ClientConfig struct {
+	Address string
+	// The maximum number of connections in the connection pool. Default is math.MaxUint.
+	PoolMaxConns uint
+	// The time to connect to the redis server. Default is 1 second.
+	DailTimeOut time.Duration
+	// The maximum amount of time a connection may be idle. Default is 30 minute.
+	ConIdleTime time.Duration
+}
+
+func (c *ClientConfig) check() error {
+	if c.Address == "" {
+		return errors.Wrap(GodisError, "address is empty")
+	}
+	if c.PoolMaxConns == 0 {
+		c.PoolMaxConns = defalutPoolMaxConns
+	}
+	if c.DailTimeOut == 0 {
+		c.DailTimeOut = defaultDailTimeOut
+	}
+	if c.ConIdleTime == 0 {
+		c.ConIdleTime = defaultConIdleTime
+	}
+	return nil
+}
 
 type Command interface {
 	SendReq(ctx context.Context, protocol Protocol) error
@@ -24,24 +59,26 @@ type Client interface {
 	Decr(ctx context.Context, key string) (int64, error)
 	DecrBy(ctx context.Context, key string, decrement int64) (int64, error)
 	GetDel(ctx context.Context, key string) (*[]byte, error)
+	GetEX(ctx context.Context, key string, args ...arg) (*[]byte, error)
 }
 
 type client struct {
-	address     string
 	conPool     ConnectionPool
 	newProtocol func(Connection) Protocol
+	config      *ClientConfig
 }
 
-func NewClient(address string) Client {
-	return &client{address: address, conPool: NewConnectionPool(address, math.MaxInt), newProtocol: NewProtocol}
+func NewClient(config *ClientConfig) (Client, error) {
+	if err := config.check(); err != nil {
+		return nil, err
+	}
+	cp := NewConnectionPool(config.Address, config.PoolMaxConns,
+		config.DailTimeOut, config.ConIdleTime)
+	return &client{conPool: cp, newProtocol: NewProtocol, config: config}, nil
 }
 
 func (c *client) Close() error {
 	return c.conPool.Close()
-}
-
-func (c *client) Pipeline() *Pipeline {
-	return &Pipeline{client: c}
 }
 
 func (c *client) exec(ctx context.Context, cmd Command) (res interface{}, err error) {
@@ -54,8 +91,8 @@ func (c *client) exec(ctx context.Context, cmd Command) (res interface{}, err er
 		if err != nil {
 			con.SetBroken()
 		}
-		err = c.conPool.Release(con)
-		if err != nil {
+		err1 := c.conPool.Release(con)
+		if err1 != nil {
 			log.Println(err)
 		}
 	}()
@@ -77,16 +114,32 @@ var XXArg arg = func() []string {
 	return []string{"XX"}
 }
 
-func EXArg(seconds int) arg {
+func EXArg(seconds uint64) arg {
 	return func() []string {
-		return []string{"EX", strconv.Itoa(seconds)}
+		return []string{"EX", strconv.FormatUint(seconds, 10)}
 	}
 }
 
-func PXArg(miliseconds int) arg {
+func PXArg(miliseconds uint64) arg {
 	return func() []string {
-		return []string{"PX", strconv.Itoa(miliseconds)}
+		return []string{"PX", strconv.FormatUint(miliseconds, 10)}
 	}
+}
+
+func EXATArg(unixTimeSeconds uint64) arg {
+	return func() []string {
+		return []string{"EXAT", strconv.FormatUint(unixTimeSeconds, 10)}
+	}
+}
+
+func PXATArg(unixTimeMiliseconds uint64) arg {
+	return func() []string {
+		return []string{"PXAT", strconv.FormatUint(unixTimeMiliseconds, 10)}
+	}
+}
+
+var PERSISTArg arg = func() []string {
+	return []string{"PERSIST"}
 }
 
 func stringsToBytes(strs []string) [][]byte {
@@ -105,45 +158,37 @@ func getArgs(args []arg) [][]byte {
 	return stringsToBytes(res)
 }
 
-type Pipeline struct {
-	client   *client
-	commands []Command
+func sendReqWithKey(ctx context.Context, protocol Protocol, cmd string, key string, args []arg) error {
+	data := [][]byte{
+		[]byte(cmd),
+		[]byte(key),
+	}
+	data = append(data, getArgs(args)...)
+	return protocol.WriteBulkStringArray(ctx, data)
 }
 
-func (p *Pipeline) Get(key string) {
-	p.commands = append(p.commands, &stringGetCommand{key: key})
+func sendReqWithKeyValue(ctx context.Context, protocol Protocol, cmd string, key string, value []byte, args []arg) error {
+	data := [][]byte{
+		[]byte(cmd),
+		[]byte(key),
+		value,
+	}
+	data = append(data, getArgs(args)...)
+	return protocol.WriteBulkStringArray(ctx, data)
 }
 
-func (p *Pipeline) Set(key string, value []byte, args ...arg) {
-	p.commands = append(p.commands, &stringSetCommand{key: key, value: value, optArgs: args})
-}
-
-func (p *Pipeline) Exec(ctx context.Context) ([]interface{}, error) {
-	r, err := p.client.exec(ctx, p)
+func readRespStringOrNil(ctx context.Context, protocol Protocol) (interface{}, error) {
+	msgType, err := protocol.GetNextMsgType(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return r.([]interface{}), nil
-}
-
-func (p *Pipeline) SendReq(ctx context.Context, protocol Protocol) error {
-	for _, cmd := range p.commands {
-		err := cmd.SendReq(ctx, protocol)
-		if err != nil {
-			return err
-		}
+	switch msgType {
+	case BulkStringType:
+		return protocol.ReadBulkString(ctx)
+	case NullType:
+		err := protocol.ReadNull(ctx)
+		return (*[]byte)(nil), err
+	default:
+		return (*[]byte)(nil), errors.New("unexpected response")
 	}
-	return nil
-}
-
-func (p *Pipeline) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
-	var res []interface{}
-	for _, cmd := range p.commands {
-		r, err := cmd.ReadResp(ctx, protocol)
-		if err != nil {
-			return nil, err
-		}
-		res = append(res, r)
-	}
-	return res, nil
 }
