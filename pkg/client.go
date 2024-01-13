@@ -3,12 +3,45 @@ package pkg
 import (
 	"context"
 	"math"
+	"time"
 
 	"log"
 	"strconv"
 
 	"github.com/pkg/errors"
 )
+
+const (
+	defalutPoolMaxConns = math.MaxUint
+	defaultDailTimeOut  = time.Second
+	defaultConIdleTime  = 30 * time.Minute
+)
+
+type ClientConfig struct {
+	Address string
+	// The maximum number of connections in the connection pool. Default is math.MaxUint.
+	PoolMaxConns uint
+	// The time to connect to the redis server. Default is 1 second.
+	DailTimeOut time.Duration
+	// The maximum amount of time a connection may be idle. Default is 30 minute.
+	ConIdleTime time.Duration
+}
+
+func (c *ClientConfig) check() error {
+	if c.Address == "" {
+		return errors.Wrap(GodisError, "address is empty")
+	}
+	if c.PoolMaxConns == 0 {
+		c.PoolMaxConns = defalutPoolMaxConns
+	}
+	if c.DailTimeOut == 0 {
+		c.DailTimeOut = defaultDailTimeOut
+	}
+	if c.ConIdleTime == 0 {
+		c.ConIdleTime = defaultConIdleTime
+	}
+	return nil
+}
 
 type Command interface {
 	SendReq(ctx context.Context, protocol Protocol) error
@@ -30,13 +63,18 @@ type Client interface {
 }
 
 type client struct {
-	address     string
 	conPool     ConnectionPool
 	newProtocol func(Connection) Protocol
+	config      *ClientConfig
 }
 
-func NewClient(address string) Client {
-	return &client{address: address, conPool: NewConnectionPool(address, math.MaxInt), newProtocol: NewProtocol}
+func NewClient(config *ClientConfig) (Client, error) {
+	if err := config.check(); err != nil {
+		return nil, err
+	}
+	cp := NewConnectionPool(config.Address, config.PoolMaxConns,
+		config.DailTimeOut, config.ConIdleTime)
+	return &client{conPool: cp, newProtocol: NewProtocol, config: config}, nil
 }
 
 func (c *client) Close() error {

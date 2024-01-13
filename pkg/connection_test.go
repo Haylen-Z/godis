@@ -114,19 +114,19 @@ func TestConnection(t *testing.T) {
 	conn, err := cp.GetConnection()
 	assert.Nil(t, err)
 	assert.IsType(t, &MockConnection{}, conn)
-	assert.Equal(t, 1, cp.AllConNum)
-	assert.Equal(t, 1, cp.UsedConNum)
-	assert.Equal(t, 0, len(cp.pool))
+	assert.EqualValues(t, 1, cp.AllConNum)
+	assert.EqualValues(t, 1, cp.UsedConNum)
+	assert.EqualValues(t, 0, len(cp.pool))
 
 	// Release connection
 	err = cp.Release(conn)
 	assert.Nil(t, err)
-	assert.Equal(t, 0, cp.UsedConNum)
+	assert.EqualValues(t, 0, cp.UsedConNum)
 	assert.Equal(t, 1, len(cp.pool))
 
 	// Pool is full
 	cons := []Connection{}
-	for i := 0; i < cp.MaxConNum; i++ {
+	for i := uint(0); i < cp.MaxConNum; i++ {
 		conn, err = cp.GetConnection()
 		assert.Nil(t, err)
 		cons = append(cons, conn)
@@ -142,8 +142,8 @@ func TestConnection(t *testing.T) {
 	err = cp.Close()
 	assert.Nil(t, err)
 	assert.Equal(t, true, cp.closed)
-	assert.Equal(t, 0, cp.AllConNum)
-	assert.Equal(t, 0, cp.UsedConNum)
+	assert.EqualValues(t, 0, cp.AllConNum)
+	assert.EqualValues(t, 0, cp.UsedConNum)
 	assert.Equal(t, 0, len(cp.pool))
 	if _, ok := <-cp.conCloseChan; ok {
 		t.Error("conCloseChan should be closed")
@@ -216,8 +216,8 @@ func TestReleaseBrokenConnectin(t *testing.T) {
 	assert.Nil(t, err)
 	err = cp.Release(conn)
 	assert.Nil(t, err)
-	assert.Equal(t, 0, cp.AllConNum)
-	assert.Equal(t, 0, cp.UsedConNum)
+	assert.EqualValues(t, 0, cp.AllConNum)
+	assert.EqualValues(t, 0, cp.UsedConNum)
 	assert.Equal(t, 0, len(cp.pool))
 
 	// Wait for closeConWorker
