@@ -60,6 +60,7 @@ type Client interface {
 	DecrBy(ctx context.Context, key string, decrement int64) (int64, error)
 	GetDel(ctx context.Context, key string) (*[]byte, error)
 	GetEX(ctx context.Context, key string, args ...arg) (*[]byte, error)
+	MGet(ctx context.Context, keys ...string) ([]interface{}, error)
 }
 
 type client struct {
@@ -174,6 +175,14 @@ func sendReqWithKeyValue(ctx context.Context, protocol Protocol, cmd string, key
 		value,
 	}
 	data = append(data, getArgs(args)...)
+	return protocol.WriteBulkStringArray(ctx, data)
+}
+
+func sendReqWithKeys(ctx context.Context, protocol Protocol, cmd string, keys []string) error {
+	data := [][]byte{
+		[]byte(cmd),
+	}
+	data = append(data, stringsToBytes(keys)...)
 	return protocol.WriteBulkStringArray(ctx, data)
 }
 

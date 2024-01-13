@@ -41,6 +41,8 @@ func (c *client) Pipeline() *Pipeline {
 	return &Pipeline{client: c}
 }
 
+// String commands
+
 func (p *Pipeline) Get(key string) {
 	p.commands = append(p.commands, &stringGetCommand{key: key})
 }
@@ -67,4 +69,8 @@ func (p *Pipeline) GetDel(key string) {
 
 func (p *Pipeline) GetEX(key string, optArgs ...arg) {
 	p.commands = append(p.commands, &stringGetEXCommand{key: key})
+}
+
+func (p *Pipeline) MGet(keys ...string) {
+	p.commands = append(p.commands, &stringMGetCommand{keys: keys})
 }

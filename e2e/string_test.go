@@ -176,3 +176,22 @@ func TestGetEX(t *testing.T) {
 	_, err = client.GetEX(ctx, k, pkg.PXATArg(100))
 	assert.Nil(t, err)
 }
+
+func TestMGet(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+
+	_, err := client.Set(ctx, "k1", []byte("v1"))
+	assert.Nil(t, err)
+	_, err = client.Set(ctx, "k2", []byte("v2"))
+	assert.Nil(t, err)
+
+	res, err := client.MGet(ctx, "k1", "k2", "k3")
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(res))
+	assert.Equal(t, "v1", string(*(res[0].(*[]byte))))
+	assert.Equal(t, "v2", string(*(res[1].(*[]byte))))
+	assert.Nil(t, res[2])
+}

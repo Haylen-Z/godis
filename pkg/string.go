@@ -189,3 +189,24 @@ func (c *client) GetEX(ctx context.Context, key string, optArgs ...arg) (*[]byte
 	}
 	return res.(*[]byte), nil
 }
+
+type stringMGetCommand struct {
+	keys []string
+}
+
+func (c *stringMGetCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	return sendReqWithKeys(ctx, protocol, "MGET", c.keys)
+}
+
+func (c *stringMGetCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	return protocol.ReadArray(ctx)
+}
+
+func (c *client) MGet(ctx context.Context, keys ...string) ([]interface{}, error) {
+	cmd := &stringMGetCommand{keys: keys}
+	res, err := c.exec(ctx, cmd)
+	if err != nil {
+		return nil, err
+	}
+	return res.([]interface{}), nil
+}
