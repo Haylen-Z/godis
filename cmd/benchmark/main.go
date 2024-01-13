@@ -18,7 +18,10 @@ func main() {
 	flag.IntVar(&loop, "loop", 100, "loop number")
 	flag.Parse()
 
-	cli := pkg.NewClient("127.0.0.1:6379")
+	cli, err := pkg.NewClient(&pkg.ClientConfig{Address: "127.0.0.1:6379"})
+	if err != nil {
+		panic(err)
+	}
 	defer cli.Close()
 
 	wg := sync.WaitGroup{}
