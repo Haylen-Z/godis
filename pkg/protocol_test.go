@@ -153,6 +153,7 @@ func TestReadError(t *testing.T) {
 	}{
 		{[]byte("-ERR unknown command 'foobar'\r\n"), Error{"ERR", "unknown command 'foobar'"}},
 		{[]byte("-WRONGTYPE Operation against a key holding the wrong kind of value\r\n"), Error{"WRONGTYPE", "Operation against a key holding the wrong kind of value"}},
+		{[]byte("-error\r\n"), Error{"", "error"}},
 	}
 
 	var proc Protocol = NewProtocol(mkCon)
@@ -239,4 +240,46 @@ func TestReadNull(t *testing.T) {
 	}).Times(1)
 	err := proc.ReadNull(ctx)
 	assert.Nil(t, err)
+}
+
+func TestReadArray(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mkCon := NewMockConnection(ctrl)
+	var proc Protocol = NewProtocol(mkCon)
+	ctx := context.Background()
+
+	str2BytesPtr := func(s string) *[]byte {
+		b := []byte(s)
+		return &b
+	}
+
+	cases := []struct {
+		in  []byte
+		out []interface{}
+	}{
+		{[]byte("*0\r\n"), []interface{}{}},
+		{[]byte("*2\r\n$5\r\nhello\r\n$5\r\nworld\r\n"), []interface{}{str2BytesPtr("hello"), str2BytesPtr("world")}},
+		{[]byte("*3\r\n:1\r\n:2\r\n:3\r\n"), []interface{}{int64(1), int64(2), int64(3)}},
+		{[]byte("*5\r\n:1\r\n:2\r\n:3\r\n:4\r\n$5\r\nhello\r\n"), []interface{}{int64(1), int64(2), int64(3), int64(4), str2BytesPtr("hello")}},
+		{[]byte("*-1\r\n"), nil},
+		{
+			[]byte("*2\r\n*3\r\n:1\r\n:2\r\n:3\r\n*2\r\n+Hello\r\n-World\r\n"),
+			[]interface{}{
+				[]interface{}{int64(1), int64(2), int64(3)},
+				[]interface{}{[]byte("Hello"), Error{"", "World"}},
+			},
+		},
+		{[]byte("*3\r\n$5\r\nhello\r\n$-1\r\n$5\r\nworld\r\n"), []interface{}{str2BytesPtr("hello"), (*[]byte)(nil), str2BytesPtr("world")}},
+	}
+
+	for _, c := range cases {
+		mkCon.EXPECT().Read(ctx, gomock.Any()).Return(len(c.in), nil).Do(func(_ context.Context, buf []byte) {
+			copy(buf, c.in)
+		}).Times(1)
+		r, err := proc.ReadArray(ctx)
+		assert.Nil(t, err)
+		assert.Equal(t, c.out, r)
+	}
 }

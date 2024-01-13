@@ -40,6 +40,7 @@ type Protocol interface {
 	GetNextMsgType(ctx context.Context) (MsgType, error)
 	ReadInteger(ctx context.Context) (int64, error)
 	ReadNull(ctx context.Context) error
+	ReadArray(ctx context.Context) ([]interface{}, error)
 
 	WriteBulkString(ctx context.Context, bs []byte) error
 	WriteBulkStringArray(ctx context.Context, bss [][]byte) error
@@ -236,11 +237,14 @@ func (p *respProtocol) ReadError(ctx context.Context) (Error, error) {
 	rec = rec[1:]
 
 	idx := bytes.Index(rec, []byte{' '})
+	var errType string
 	if idx == -1 {
-		return Error{}, errors.Wrap(errInvalidMsg, "invalid error prefix")
+		errType = ""
+		idx = 0
+	} else {
+		errType = string(rec[:idx])
 	}
 
-	errType := string(rec[:idx])
 	errMsg := string(bytes.TrimPrefix(rec[idx:], []byte{' '}))
 	return Error{errType, errMsg}, nil
 }
@@ -271,4 +275,56 @@ func (p *respProtocol) ReadNull(ctx context.Context) error {
 		return errors.Wrap(errInvalidMsg, "invalid null prefix")
 	}
 	return nil
+}
+
+func (p *respProtocol) ReadArray(ctx context.Context) ([]interface{}, error) {
+	// *<number-of-elements>\r\n<element-1>...<element-n>
+
+	rec, err := p.readBeforeTerminator(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(rec) == 0 || rec[0] != arrayPrefix {
+		return nil, errors.Wrap(errInvalidMsg, "invalid array prefix")
+	}
+	rec = rec[1:]
+
+	arrayLen, err := strconv.ParseInt(string(rec), 10, 64)
+	if err != nil {
+		return nil, errors.Wrap(errInvalidMsg, "invalid array length")
+	}
+	if arrayLen == -1 {
+		return nil, nil
+	}
+
+	res := make([]interface{}, 0, arrayLen)
+	for i := 0; i < int(arrayLen); i++ {
+		t, err := p.GetNextMsgType(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		var r interface{}
+		switch t {
+		case SimpleStringType:
+			r, err = p.ReadSimpleString(ctx)
+		case BulkStringType:
+			r, err = p.ReadBulkString(ctx)
+		case ArrayType:
+			r, err = p.ReadArray(ctx)
+		case IntegerType:
+			r, err = p.ReadInteger(ctx)
+		case ErrorType:
+			r, err = p.ReadError(ctx)
+		case NullType:
+			err = p.ReadNull(ctx)
+		default:
+			return nil, errors.Wrap(errInvalidMsg, "invalid msg type")
+		}
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, r)
+	}
+	return res, nil
 }
