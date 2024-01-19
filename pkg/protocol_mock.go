@@ -109,6 +109,21 @@ func (mr *MockProtocolMockRecorder) ReadInteger(ctx interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadInteger", reflect.TypeOf((*MockProtocol)(nil).ReadInteger), ctx)
 }
 
+// ReadMap mocks base method.
+func (m *MockProtocol) ReadMap(ctx context.Context) ([]interface{}, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadMap", ctx)
+	ret0, _ := ret[0].([]interface{})
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ReadMap indicates an expected call of ReadMap.
+func (mr *MockProtocolMockRecorder) ReadMap(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadMap", reflect.TypeOf((*MockProtocol)(nil).ReadMap), ctx)
+}
+
 // ReadNull mocks base method.
 func (m *MockProtocol) ReadNull(ctx context.Context) error {
 	m.ctrl.T.Helper()
