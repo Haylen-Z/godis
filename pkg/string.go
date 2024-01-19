@@ -199,14 +199,26 @@ func (c *stringMGetCommand) SendReq(ctx context.Context, protocol Protocol) erro
 }
 
 func (c *stringMGetCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
-	return protocol.ReadArray(ctx)
+	arr, err := protocol.ReadArray(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*[]byte, 0, len(arr))
+	for _, item := range arr {
+		if item == nil {
+			res = append(res, nil)
+		} else {
+			res = append(res, item.(*[]byte))
+		}
+	}
+	return res, nil
 }
 
-func (c *client) MGet(ctx context.Context, keys ...string) ([]interface{}, error) {
+func (c *client) MGet(ctx context.Context, keys ...string) ([]*[]byte, error) {
 	cmd := &stringMGetCommand{keys: keys}
 	res, err := c.exec(ctx, cmd)
 	if err != nil {
 		return nil, err
 	}
-	return res.([]interface{}), nil
+	return res.([]*[]byte), nil
 }

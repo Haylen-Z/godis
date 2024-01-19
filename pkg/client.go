@@ -60,7 +60,7 @@ type Client interface {
 	DecrBy(ctx context.Context, key string, decrement int64) (int64, error)
 	GetDel(ctx context.Context, key string) (*[]byte, error)
 	GetEX(ctx context.Context, key string, args ...arg) (*[]byte, error)
-	MGet(ctx context.Context, keys ...string) ([]interface{}, error)
+	MGet(ctx context.Context, keys ...string) ([]*[]byte, error)
 }
 
 type client struct {
