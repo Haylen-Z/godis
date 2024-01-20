@@ -39,7 +39,7 @@ func TestPipeline(t *testing.T) {
 
 	// Set
 	mkProtocol.EXPECT().WriteBulkStringArray(ctx, [][]byte{[]byte("SET"), key, val}).Return(nil).Times(1)
-	mkProtocol.EXPECT().GetNextMsgType(ctx).Return(MsgType(SimpleStringType), nil).Times(1)
+	mkProtocol.EXPECT().GetNextMsgType(ctx).Return(MsgType(SimpleStringType), nil).Times(2)
 	mkProtocol.EXPECT().ReadSimpleString(ctx).Return([]byte("OK"), nil).Times(1)
 
 	// Get

@@ -106,6 +106,19 @@ func (c *client) exec(ctx context.Context, cmd Command) (res interface{}, err er
 	if err != nil {
 		return
 	}
+
+	t, err := protocol.GetNextMsgType(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if t == ErrorType {
+		e1, err := protocol.ReadError(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return nil, e1
+	}
+
 	return cmd.ReadResp(ctx, protocol)
 }
 

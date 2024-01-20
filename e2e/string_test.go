@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"sync"
 	"testing"
@@ -29,6 +30,10 @@ func TestStringGetAndSet(t *testing.T) {
 	res, err = client.Set(context.TODO(), "hello", []byte("world2"), pkg.XXArg, pkg.EXArg(100))
 	assert.Nil(t, err)
 	assert.True(t, res)
+
+	_, err = client.Set(context.TODO(), "hello", []byte("world2"), pkg.MINMATCHLENArg(1))
+	assert.NotNil(t, err)
+	assert.True(t, errors.As(err, &pkg.Error{}))
 }
 
 func TestConcurrent(t *testing.T) {

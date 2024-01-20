@@ -62,12 +62,6 @@ func (c *stringSetCommand) ReadResp(ctx context.Context, protocol Protocol) (int
 			return false, errors.WithStack(errUnexpectedRes)
 		}
 		return false, nil
-	case ErrorType:
-		resErr, err := protocol.ReadError(ctx)
-		if err != nil {
-			return false, err
-		}
-		return false, resErr
 	default:
 		return false, errors.WithStack(errUnexpectedRes)
 	}
@@ -253,12 +247,6 @@ func (c *stringLcsCommand) ReadResp(ctx context.Context, protocol Protocol) (int
 		return protocol.ReadArray(ctx)
 	case MapType:
 		return protocol.ReadMap(ctx)
-	case ErrorType:
-		err1, err := protocol.ReadError(ctx)
-		if err != nil {
-			return nil, err
-		}
-		return nil, err1
 	default:
 		return nil, errors.WithStack(errUnexpectedRes)
 	}
