@@ -29,7 +29,7 @@ type ClientConfig struct {
 
 func (c *ClientConfig) check() error {
 	if c.Address == "" {
-		return errors.Wrap(GodisError, "address is empty")
+		return errors.Wrap(ErrGodis, "address is empty")
 	}
 	if c.PoolMaxConns == 0 {
 		c.PoolMaxConns = defalutPoolMaxConns
@@ -61,6 +61,10 @@ type Client interface {
 	GetDel(ctx context.Context, key string) (*[]byte, error)
 	GetEX(ctx context.Context, key string, args ...arg) (*[]byte, error)
 	MGet(ctx context.Context, keys ...string) ([]*[]byte, error)
+	Lcs(ctx context.Context, key1 string, key2 string, args ...arg) ([]byte, error)
+	LcsLen(ctx context.Context, key1 string, key2 string) (int64, error)
+	LcsIdx(ctx context.Context, key1 string, key2 string, args ...arg) (LcsIdxRes, error)
+	LcsIdxWithMatchLen(ctx context.Context, key1 string, key2 string, args ...arg) (LcsIdxRes, error)
 }
 
 type client struct {
@@ -141,6 +145,12 @@ func PXATArg(unixTimeMiliseconds uint64) arg {
 
 var PERSISTArg arg = func() []string {
 	return []string{"PERSIST"}
+}
+
+func MINMATCHLENArg(l uint64) arg {
+	return func() []string {
+		return []string{"MINMATCHLEN", strconv.FormatUint(l, 10)}
+	}
 }
 
 func stringsToBytes(strs []string) [][]byte {

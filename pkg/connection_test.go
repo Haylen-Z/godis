@@ -132,7 +132,7 @@ func TestConnection(t *testing.T) {
 		cons = append(cons, conn)
 	}
 	_, err = cp.GetConnection()
-	assert.ErrorIs(t, err, ConnectionPoolFullError)
+	assert.ErrorIs(t, err, ErrConnectionPoolFull)
 	for _, con := range cons {
 		err = cp.Release(con)
 		assert.Nil(t, err)
@@ -151,11 +151,11 @@ func TestConnection(t *testing.T) {
 
 	// Get connection from closed pool
 	_, err = cp.GetConnection()
-	assert.ErrorIs(t, err, ClosedPoolError)
+	assert.ErrorIs(t, err, ErrClosedPool)
 
 	// Release connection to closed pool
 	err = cp.Release(conn)
-	assert.ErrorIs(t, err, ClosedPoolError)
+	assert.ErrorIs(t, err, ErrClosedPool)
 
 	// Close closed pool
 	err = cp.Close()
