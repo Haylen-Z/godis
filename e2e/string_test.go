@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"sync"
 	"testing"
@@ -29,6 +30,10 @@ func TestStringGetAndSet(t *testing.T) {
 	res, err = client.Set(context.TODO(), "hello", []byte("world2"), pkg.XXArg, pkg.EXArg(100))
 	assert.Nil(t, err)
 	assert.True(t, res)
+
+	_, err = client.Set(context.TODO(), "hello", []byte("world2"), pkg.MINMATCHLENArg(1))
+	assert.NotNil(t, err)
+	assert.True(t, errors.As(err, &pkg.Error{}))
 }
 
 func TestConcurrent(t *testing.T) {
@@ -175,4 +180,77 @@ func TestGetEX(t *testing.T) {
 
 	_, err = client.GetEX(ctx, k, pkg.PXATArg(100))
 	assert.Nil(t, err)
+}
+
+func TestMGet(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+
+	_, err := client.Set(ctx, "k1", []byte("v1"))
+	assert.Nil(t, err)
+	_, err = client.Set(ctx, "k2", []byte("v2"))
+	assert.Nil(t, err)
+
+	res, err := client.MGet(ctx, "k1", "k2", "k3")
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(res))
+	assert.Equal(t, "v1", string(*res[0]))
+	assert.Equal(t, "v2", string(*res[1]))
+	assert.Nil(t, res[2])
+}
+
+func TestLcs(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+
+	k1 := "key1"
+	_, err := client.Set(ctx, k1, []byte("ohmytext"))
+	assert.Nil(t, err)
+
+	k2 := "key2"
+	_, err = client.Set(ctx, k2, []byte("mynewtext"))
+	assert.Nil(t, err)
+
+	res, err := client.Lcs(ctx, k1, k2)
+	assert.Nil(t, err)
+	assert.Equal(t, "mytext", string(res))
+
+	l, err := client.LcsLen(ctx, k1, k2)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(6), l)
+
+	idx, err := client.LcsIdx(ctx, k1, k2)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(6), idx.Len)
+	assert.Equal(t, 2, len(idx.Matches))
+	m := idx.Matches[1]
+	assert.Equal(t, 2, m.Pos1[0])
+	assert.Equal(t, 3, m.Pos1[1])
+	assert.Equal(t, 0, m.Pos2[0])
+	assert.Equal(t, 1, m.Pos2[1])
+
+	idx, err = client.LcsIdx(ctx, k1, k2, pkg.MINMATCHLENArg(4))
+	assert.Nil(t, err)
+	assert.Equal(t, int64(6), idx.Len)
+	assert.Equal(t, 1, len(idx.Matches))
+	m = idx.Matches[0]
+	assert.Equal(t, 4, m.Pos1[0])
+	assert.Equal(t, 7, m.Pos1[1])
+	assert.Equal(t, 5, m.Pos2[0])
+	assert.Equal(t, 8, m.Pos2[1])
+
+	idx, err = client.LcsIdxWithMatchLen(ctx, k1, k2, pkg.MINMATCHLENArg(4))
+	assert.Nil(t, err)
+	assert.Equal(t, int64(6), idx.Len)
+	assert.Equal(t, 1, len(idx.Matches))
+	m = idx.Matches[0]
+	assert.Equal(t, 4, m.Pos1[0])
+	assert.Equal(t, 7, m.Pos1[1])
+	assert.Equal(t, 5, m.Pos2[0])
+	assert.Equal(t, 8, m.Pos2[1])
+	assert.Equal(t, 4, m.Len)
 }

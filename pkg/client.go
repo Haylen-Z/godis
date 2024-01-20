@@ -29,7 +29,7 @@ type ClientConfig struct {
 
 func (c *ClientConfig) check() error {
 	if c.Address == "" {
-		return errors.Wrap(GodisError, "address is empty")
+		return errors.Wrap(ErrGodis, "address is empty")
 	}
 	if c.PoolMaxConns == 0 {
 		c.PoolMaxConns = defalutPoolMaxConns
@@ -60,6 +60,11 @@ type Client interface {
 	DecrBy(ctx context.Context, key string, decrement int64) (int64, error)
 	GetDel(ctx context.Context, key string) (*[]byte, error)
 	GetEX(ctx context.Context, key string, args ...arg) (*[]byte, error)
+	MGet(ctx context.Context, keys ...string) ([]*[]byte, error)
+	Lcs(ctx context.Context, key1 string, key2 string, args ...arg) ([]byte, error)
+	LcsLen(ctx context.Context, key1 string, key2 string) (int64, error)
+	LcsIdx(ctx context.Context, key1 string, key2 string, args ...arg) (LcsIdxRes, error)
+	LcsIdxWithMatchLen(ctx context.Context, key1 string, key2 string, args ...arg) (LcsIdxRes, error)
 }
 
 type client struct {
@@ -101,6 +106,19 @@ func (c *client) exec(ctx context.Context, cmd Command) (res interface{}, err er
 	if err != nil {
 		return
 	}
+
+	t, err := protocol.GetNextMsgType(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if t == ErrorType {
+		e1, err := protocol.ReadError(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return nil, e1
+	}
+
 	return cmd.ReadResp(ctx, protocol)
 }
 
@@ -142,6 +160,12 @@ var PERSISTArg arg = func() []string {
 	return []string{"PERSIST"}
 }
 
+func MINMATCHLENArg(l uint64) arg {
+	return func() []string {
+		return []string{"MINMATCHLEN", strconv.FormatUint(l, 10)}
+	}
+}
+
 func stringsToBytes(strs []string) [][]byte {
 	var res [][]byte
 	for _, str := range strs {
@@ -174,6 +198,14 @@ func sendReqWithKeyValue(ctx context.Context, protocol Protocol, cmd string, key
 		value,
 	}
 	data = append(data, getArgs(args)...)
+	return protocol.WriteBulkStringArray(ctx, data)
+}
+
+func sendReqWithKeys(ctx context.Context, protocol Protocol, cmd string, keys []string) error {
+	data := [][]byte{
+		[]byte(cmd),
+	}
+	data = append(data, stringsToBytes(keys)...)
 	return protocol.WriteBulkStringArray(ctx, data)
 }
 

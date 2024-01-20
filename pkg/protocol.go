@@ -20,6 +20,7 @@ const (
 	IntegerType
 	ErrorType
 	NullType
+	MapType
 )
 
 var errInvalidMsg = fmt.Errorf("invalid msg type")
@@ -40,6 +41,8 @@ type Protocol interface {
 	GetNextMsgType(ctx context.Context) (MsgType, error)
 	ReadInteger(ctx context.Context) (int64, error)
 	ReadNull(ctx context.Context) error
+	ReadArray(ctx context.Context) ([]interface{}, error)
+	ReadMap(ctx context.Context) ([]interface{}, error)
 
 	WriteBulkString(ctx context.Context, bs []byte) error
 	WriteBulkStringArray(ctx context.Context, bss [][]byte) error
@@ -52,6 +55,7 @@ const (
 	errorPrefix        = '-'
 	integerPrefix      = ':'
 	nullPrefix         = '_'
+	mapPrefix          = '%'
 )
 
 var terminator = []byte{'\r', '\n'}
@@ -218,6 +222,8 @@ func (p *respProtocol) GetNextMsgType(ctx context.Context) (MsgType, error) {
 		return ErrorType, nil
 	case nullPrefix:
 		return NullType, nil
+	case mapPrefix:
+		return MapType, nil
 	default:
 		return 0, errors.WithStack(errInvalidMsg)
 	}
@@ -236,11 +242,14 @@ func (p *respProtocol) ReadError(ctx context.Context) (Error, error) {
 	rec = rec[1:]
 
 	idx := bytes.Index(rec, []byte{' '})
+	var errType string
 	if idx == -1 {
-		return Error{}, errors.Wrap(errInvalidMsg, "invalid error prefix")
+		errType = ""
+		idx = 0
+	} else {
+		errType = string(rec[:idx])
 	}
 
-	errType := string(rec[:idx])
 	errMsg := string(bytes.TrimPrefix(rec[idx:], []byte{' '}))
 	return Error{errType, errMsg}, nil
 }
@@ -271,4 +280,112 @@ func (p *respProtocol) ReadNull(ctx context.Context) error {
 		return errors.Wrap(errInvalidMsg, "invalid null prefix")
 	}
 	return nil
+}
+
+func (p *respProtocol) ReadArray(ctx context.Context) ([]interface{}, error) {
+	// *<number-of-elements>\r\n<element-1>...<element-n>
+
+	rec, err := p.readBeforeTerminator(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(rec) == 0 || rec[0] != arrayPrefix {
+		return nil, errors.Wrap(errInvalidMsg, "invalid array prefix")
+	}
+	rec = rec[1:]
+
+	arrayLen, err := strconv.ParseInt(string(rec), 10, 64)
+	if err != nil {
+		return nil, errors.Wrap(errInvalidMsg, "invalid array length")
+	}
+	if arrayLen == -1 {
+		return nil, nil
+	}
+
+	res := make([]interface{}, 0, arrayLen)
+	for i := 0; i < int(arrayLen); i++ {
+		t, err := p.GetNextMsgType(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		var r interface{}
+		switch t {
+		case SimpleStringType:
+			r, err = p.ReadSimpleString(ctx)
+		case BulkStringType:
+			r, err = p.ReadBulkString(ctx)
+		case ArrayType:
+			r, err = p.ReadArray(ctx)
+		case IntegerType:
+			r, err = p.ReadInteger(ctx)
+		case ErrorType:
+			r, err = p.ReadError(ctx)
+		case MapType:
+			r, err = p.ReadMap(ctx)
+		case NullType:
+			err = p.ReadNull(ctx)
+		default:
+			return nil, errors.Wrap(errInvalidMsg, "invalid msg type")
+		}
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, r)
+	}
+	return res, nil
+}
+
+func (p *respProtocol) ReadMap(ctx context.Context) ([]interface{}, error) {
+	// %<number-of-entries>\r\n<key-1><value-1>...<key-n><value-n>
+
+	rec, err := p.readBeforeTerminator(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(rec) == 0 || rec[0] != mapPrefix {
+		return nil, errors.Wrap(errInvalidMsg, "invalid map prefix")
+	}
+	rec = rec[1:]
+
+	itemLen, err := strconv.ParseInt(string(rec), 10, 64)
+	if err != nil {
+		return nil, errors.Wrap(errInvalidMsg, "invalid map length")
+	}
+	if itemLen == -1 {
+		return nil, nil
+	}
+
+	res := make([]interface{}, 0, itemLen*2)
+	for i := 0; i < int(itemLen*2); i++ {
+		t, err := p.GetNextMsgType(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		var r interface{}
+		switch t {
+		case SimpleStringType:
+			r, err = p.ReadSimpleString(ctx)
+		case BulkStringType:
+			r, err = p.ReadBulkString(ctx)
+		case ArrayType:
+			r, err = p.ReadArray(ctx)
+		case IntegerType:
+			r, err = p.ReadInteger(ctx)
+		case ErrorType:
+			r, err = p.ReadError(ctx)
+		case MapType:
+			r, err = p.ReadMap(ctx)
+		case NullType:
+			err = p.ReadNull(ctx)
+		default:
+			return nil, errors.Wrap(errInvalidMsg, "invalid msg type")
+		}
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, r)
+	}
+	return res, nil
 }

@@ -49,6 +49,21 @@ func (mr *MockProtocolMockRecorder) GetNextMsgType(ctx interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNextMsgType", reflect.TypeOf((*MockProtocol)(nil).GetNextMsgType), ctx)
 }
 
+// ReadArray mocks base method.
+func (m *MockProtocol) ReadArray(ctx context.Context) ([]interface{}, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadArray", ctx)
+	ret0, _ := ret[0].([]interface{})
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ReadArray indicates an expected call of ReadArray.
+func (mr *MockProtocolMockRecorder) ReadArray(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadArray", reflect.TypeOf((*MockProtocol)(nil).ReadArray), ctx)
+}
+
 // ReadBulkString mocks base method.
 func (m *MockProtocol) ReadBulkString(ctx context.Context) (*[]byte, error) {
 	m.ctrl.T.Helper()
@@ -92,6 +107,21 @@ func (m *MockProtocol) ReadInteger(ctx context.Context) (int64, error) {
 func (mr *MockProtocolMockRecorder) ReadInteger(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadInteger", reflect.TypeOf((*MockProtocol)(nil).ReadInteger), ctx)
+}
+
+// ReadMap mocks base method.
+func (m *MockProtocol) ReadMap(ctx context.Context) ([]interface{}, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadMap", ctx)
+	ret0, _ := ret[0].([]interface{})
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ReadMap indicates an expected call of ReadMap.
+func (mr *MockProtocolMockRecorder) ReadMap(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadMap", reflect.TypeOf((*MockProtocol)(nil).ReadMap), ctx)
 }
 
 // ReadNull mocks base method.

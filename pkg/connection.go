@@ -159,13 +159,13 @@ func (p *connectionPool) GetConnection() (Connection, error) {
 	defer p.mutex.Unlock()
 
 	if p.closed {
-		return nil, ClosedPoolError
+		return nil, ErrClosedPool
 	}
 
 	con := p.tryGetHealthConn()
 	if con == nil {
 		if p.AllConNum >= p.MaxConNum {
-			return nil, ConnectionPoolFullError
+			return nil, ErrConnectionPoolFull
 		}
 		con = p.newConnection(p.address)
 		if err := con.Connect(); err != nil {
@@ -182,7 +182,7 @@ func (p *connectionPool) Release(conn Connection) error {
 	defer p.mutex.Unlock()
 
 	if p.closed {
-		return ClosedPoolError
+		return ErrClosedPool
 	}
 
 	if conn.IsBroken() {
