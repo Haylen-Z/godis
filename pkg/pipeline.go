@@ -74,3 +74,19 @@ func (p *Pipeline) GetEX(key string, optArgs ...arg) {
 func (p *Pipeline) MGet(keys ...string) {
 	p.commands = append(p.commands, &stringMGetCommand{keys: keys})
 }
+
+func (p *Pipeline) Lcs(key1 string, key2 string, args ...arg) {
+	p.commands = append(p.commands, &stringLcsCommand{key1: key1, key2: key2, args: args})
+}
+
+func (p *Pipeline) LcsLen(key1 string, key2 string) {
+	p.commands = append(p.commands, &stringLcsLenCommand{key1: key1, key2: key2})
+}
+
+func (p *Pipeline) LcsIdx(key1 string, key2 string, args ...arg) {
+	p.commands = append(p.commands, &stringLcsIdxCommand{key1: key1, key2: key2, args: args})
+}
+
+func (p *Pipeline) LcsIdxWithMatchLen(key1 string, key2 string, args ...arg) {
+	p.commands = append(p.commands, &stringLcsIdxWithMatchLenCommand{key1: key1, key2: key2, args: args})
+}

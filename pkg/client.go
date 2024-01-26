@@ -201,11 +201,12 @@ func sendReqWithKeyValue(ctx context.Context, protocol Protocol, cmd string, key
 	return protocol.WriteBulkStringArray(ctx, data)
 }
 
-func sendReqWithKeys(ctx context.Context, protocol Protocol, cmd string, keys []string) error {
+func sendReqWithKeys(ctx context.Context, protocol Protocol, cmd string, keys []string, args ...arg) error {
 	data := [][]byte{
 		[]byte(cmd),
 	}
 	data = append(data, stringsToBytes(keys)...)
+	data = append(data, getArgs(args)...)
 	return protocol.WriteBulkStringArray(ctx, data)
 }
 
