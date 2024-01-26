@@ -14,7 +14,7 @@ import (
 type MsgType int
 
 const (
-	SimpleStringType = iota
+	SimpleStringType MsgType = iota
 	BulkStringType
 	ArrayType
 	IntegerType

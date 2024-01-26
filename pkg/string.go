@@ -16,7 +16,7 @@ func (c *stringGetCommand) SendReq(ctx context.Context, protocol Protocol) error
 }
 
 func (c *stringGetCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
-	return protocol.ReadBulkString(ctx)
+	return readRespStringOrNil(ctx, protocol)
 }
 
 func (c *client) Get(ctx context.Context, key string) (*[]byte, error) {
@@ -62,6 +62,9 @@ func (c *stringSetCommand) ReadResp(ctx context.Context, protocol Protocol) (int
 			return false, errors.WithStack(errUnexpectedRes)
 		}
 		return false, nil
+	case NullType:
+		err := protocol.ReadNull(ctx)
+		return (*[]byte)(nil), err
 	default:
 		return false, errors.WithStack(errUnexpectedRes)
 	}
