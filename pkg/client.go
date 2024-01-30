@@ -25,6 +25,9 @@ type ClientConfig struct {
 	DailTimeOut time.Duration
 	// The maximum amount of time a connection may be idle. Default is 30 minute.
 	ConIdleTime time.Duration
+	// the maxinum number of idle connections in the connection pool. Default is 0.
+	// If the value is 0, the maxinum number of idle connections is the same as the maxinum number of connections.
+	MaxIdleConns uint
 }
 
 func (c *ClientConfig) check() error {
@@ -77,7 +80,7 @@ func NewClient(config *ClientConfig) (Client, error) {
 	if err := config.check(); err != nil {
 		return nil, err
 	}
-	cp := NewConnectionPool(config.Address, config.PoolMaxConns,
+	cp := NewConnectionPool(config.Address, config.PoolMaxConns, config.MaxIdleConns,
 		config.DailTimeOut, config.ConIdleTime)
 	return &client{conPool: cp, newProtocol: NewProtocol, config: config}, nil
 }
