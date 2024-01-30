@@ -22,10 +22,7 @@ func (c *stringGetCommand) ReadResp(ctx context.Context, protocol Protocol) (int
 func (c *client) Get(ctx context.Context, key string) (*[]byte, error) {
 	cmd := &stringGetCommand{key: key}
 	res, err := c.exec(ctx, cmd)
-	if err != nil {
-		return nil, err
-	}
-	return res.(*[]byte), nil
+	return res.(*[]byte), err
 }
 
 type stringSetCommand struct {
@@ -95,10 +92,7 @@ func (c *stringAppendCommand) ReadResp(ctx context.Context, protocol Protocol) (
 func (c *client) Append(ctx context.Context, key string, value []byte) (int64, error) {
 	cmd := &stringAppendCommand{key: key, value: value}
 	res, err := c.exec(ctx, cmd)
-	if err != nil {
-		return 0, err
-	}
-	return res.(int64), nil
+	return res.(int64), err
 }
 
 type integerResCommand struct {
@@ -116,10 +110,7 @@ func (c *integerResCommand) ReadResp(ctx context.Context, protocol Protocol) (in
 func (c *client) Decr(ctx context.Context, key string) (int64, error) {
 	cmd := &integerResCommand{key: key}
 	res, err := c.exec(ctx, cmd)
-	if err != nil {
-		return 0, err
-	}
-	return res.(int64), nil
+	return res.(int64), err
 }
 
 type integerDecrByCommand struct {
@@ -138,10 +129,7 @@ func (c *integerDecrByCommand) ReadResp(ctx context.Context, protocol Protocol) 
 func (c *client) DecrBy(ctx context.Context, key string, decrement int64) (int64, error) {
 	cmd := &integerDecrByCommand{key: key, decrement: decrement}
 	res, err := c.exec(ctx, cmd)
-	if err != nil {
-		return 0, err
-	}
-	return res.(int64), nil
+	return res.(int64), err
 }
 
 type stringGetDelCommand struct {
@@ -159,10 +147,7 @@ func (c *stringGetDelCommand) ReadResp(ctx context.Context, protocol Protocol) (
 func (c *client) GetDel(ctx context.Context, key string) (*[]byte, error) {
 	cmd := &stringGetDelCommand{key: key}
 	res, err := c.exec(ctx, cmd)
-	if err != nil {
-		return nil, err
-	}
-	return res.(*[]byte), nil
+	return res.(*[]byte), err
 }
 
 type stringGetEXCommand struct {
@@ -181,10 +166,7 @@ func (c *stringGetEXCommand) ReadResp(ctx context.Context, protocol Protocol) (i
 func (c *client) GetEX(ctx context.Context, key string, optArgs ...arg) (*[]byte, error) {
 	cmd := &stringGetEXCommand{key: key, args: optArgs}
 	res, err := c.exec(ctx, cmd)
-	if err != nil {
-		return nil, err
-	}
-	return res.(*[]byte), nil
+	return res.(*[]byte), err
 }
 
 type stringMGetCommand struct {
@@ -214,10 +196,7 @@ func (c *stringMGetCommand) ReadResp(ctx context.Context, protocol Protocol) (in
 func (c *client) MGet(ctx context.Context, keys ...string) ([]*[]byte, error) {
 	cmd := &stringMGetCommand{keys: keys}
 	res, err := c.exec(ctx, cmd)
-	if err != nil {
-		return nil, err
-	}
-	return res.([]*[]byte), nil
+	return res.([]*[]byte), err
 }
 
 type stringLcsCommand struct {
@@ -232,10 +211,7 @@ func (c *stringLcsCommand) SendReq(ctx context.Context, protocol Protocol) error
 
 func (c *stringLcsCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
 	r, err := protocol.ReadBulkString(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return *r, nil
+	return *r, err
 }
 
 func (c *client) Lcs(ctx context.Context, key1 string, key2 string, args ...arg) ([]byte, error) {
@@ -424,14 +400,12 @@ func (c *stringGetRangeCommand) SendReq(ctx context.Context, protocol Protocol) 
 }
 
 func (c *stringGetRangeCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
-	return readRespStringOrNil(ctx, protocol)
+	r, err := protocol.ReadBulkString(ctx)
+	return *r, err
 }
 
-func (c *client) GetRange(ctx context.Context, key string, start int64, end int64) (*[]byte, error) {
+func (c *client) GetRange(ctx context.Context, key string, start int64, end int64) ([]byte, error) {
 	cmd := &stringGetRangeCommand{key: key, start: start, end: end}
-	res, err := c.exec(ctx, cmd)
-	if err != nil {
-		return nil, err
-	}
-	return res.(*[]byte), nil
+	r, err := c.exec(ctx, cmd)
+	return r.([]byte), err
 }

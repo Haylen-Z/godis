@@ -267,5 +267,9 @@ func TestGetRange(t *testing.T) {
 
 	res, err := client.GetRange(ctx, k, 0, 3)
 	assert.Nil(t, err)
-	assert.Equal(t, "hell", string(*res))
+	assert.Equal(t, "hell", string(res))
+
+	res, err = client.GetRange(ctx, k, 2, -1)
+	assert.Nil(t, err)
+	assert.Equal(t, "llo", string(res))
 }

@@ -62,7 +62,7 @@ type Client interface {
 	Get(ctx context.Context, key string) (*[]byte, error)
 	GetDel(ctx context.Context, key string) (*[]byte, error)
 	GetEX(ctx context.Context, key string, args ...arg) (*[]byte, error)
-	GetRange(ctx context.Context, key string, start int64, end int64) (*[]byte, error)
+	GetRange(ctx context.Context, key string, start int64, end int64) ([]byte, error)
 	Set(ctx context.Context, key string, value []byte, args ...arg) (bool, error)
 	MGet(ctx context.Context, keys ...string) ([]*[]byte, error)
 	Lcs(ctx context.Context, key1 string, key2 string, args ...arg) ([]byte, error)
@@ -214,7 +214,7 @@ func sendReqWithKeys(ctx context.Context, protocol Protocol, cmd string, keys []
 	return protocol.WriteBulkStringArray(ctx, data)
 }
 
-func readRespStringOrNil(ctx context.Context, protocol Protocol) (interface{}, error) {
+func readRespStringOrNil(ctx context.Context, protocol Protocol) (*[]byte, error) {
 	msgType, err := protocol.GetNextMsgType(ctx)
 	if err != nil {
 		return nil, err
@@ -226,6 +226,6 @@ func readRespStringOrNil(ctx context.Context, protocol Protocol) (interface{}, e
 		err := protocol.ReadNull(ctx)
 		return (*[]byte)(nil), err
 	default:
-		return (*[]byte)(nil), errors.New("unexpected response")
+		return (*[]byte)(nil), errors.WithStack(errUnexpectedRes)
 	}
 }
