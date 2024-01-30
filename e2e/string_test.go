@@ -292,3 +292,37 @@ func TestGetSet(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "world", string(*res))
 }
+
+func TestIncr(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+
+	k := "kincr"
+	_, err := client.Set(ctx, k, []byte("0"))
+	assert.Nil(t, err)
+
+	res, err := client.Incr(ctx, k)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(1), res)
+}
+
+func TestIncrBy(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+
+	k := "kincrby"
+	_, err := client.Set(ctx, k, []byte("0"))
+	assert.Nil(t, err)
+
+	res, err := client.IncrBy(ctx, k, 2)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(2), res)
+
+	res, err = client.IncrBy(ctx, k, -3)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(-1), res)
+}

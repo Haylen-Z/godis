@@ -95,39 +95,39 @@ func (c *client) Append(ctx context.Context, key string, value []byte) (int64, e
 	return res.(int64), err
 }
 
-type integerResCommand struct {
+type stringDecrCommand struct {
 	key string
 }
 
-func (c *integerResCommand) SendReq(ctx context.Context, protocol Protocol) error {
+func (c *stringDecrCommand) SendReq(ctx context.Context, protocol Protocol) error {
 	return sendReqWithKey(ctx, protocol, "Decr", c.key, nil)
 }
 
-func (c *integerResCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+func (c *stringDecrCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
 	return protocol.ReadInteger(ctx)
 }
 
 func (c *client) Decr(ctx context.Context, key string) (int64, error) {
-	cmd := &integerResCommand{key: key}
+	cmd := &stringDecrCommand{key: key}
 	res, err := c.exec(ctx, cmd)
 	return res.(int64), err
 }
 
-type integerDecrByCommand struct {
+type stringDecrByCommand struct {
 	key       string
 	decrement int64
 }
 
-func (c *integerDecrByCommand) SendReq(ctx context.Context, protocol Protocol) error {
+func (c *stringDecrByCommand) SendReq(ctx context.Context, protocol Protocol) error {
 	return sendReqWithKeyValue(ctx, protocol, "DECRBY", c.key, []byte(strconv.FormatInt(c.decrement, 10)), nil)
 }
 
-func (c *integerDecrByCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+func (c *stringDecrByCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
 	return protocol.ReadInteger(ctx)
 }
 
 func (c *client) DecrBy(ctx context.Context, key string, decrement int64) (int64, error) {
-	cmd := &integerDecrByCommand{key: key, decrement: decrement}
+	cmd := &stringDecrByCommand{key: key, decrement: decrement}
 	res, err := c.exec(ctx, cmd)
 	return res.(int64), err
 }
@@ -427,4 +427,41 @@ func (c *client) GetSet(ctx context.Context, key string, value []byte) (*[]byte,
 	cmd := &stringGetSetCommand{key: key, value: value}
 	r, err := c.exec(ctx, cmd)
 	return r.(*[]byte), err
+}
+
+type stringIncrCommand struct {
+	key string
+}
+
+func (c *stringIncrCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	return sendReqWithKey(ctx, protocol, "INCR", c.key, nil)
+}
+
+func (c *stringIncrCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	return protocol.ReadInteger(ctx)
+}
+
+func (c *client) Incr(ctx context.Context, key string) (int64, error) {
+	cmd := &stringIncrCommand{key: key}
+	r, err := c.exec(ctx, cmd)
+	return r.(int64), err
+}
+
+type stringIncrByCommand struct {
+	key       string
+	increment int64
+}
+
+func (c *stringIncrByCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	return sendReqWithKeyValue(ctx, protocol, "INCRBY", c.key, []byte(strconv.FormatInt(c.increment, 10)), nil)
+}
+
+func (c *stringIncrByCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	return protocol.ReadInteger(ctx)
+}
+
+func (c *client) IncrBy(ctx context.Context, key string, increment int64) (int64, error) {
+	cmd := &stringIncrByCommand{key: key, increment: increment}
+	r, err := c.exec(ctx, cmd)
+	return r.(int64), err
 }

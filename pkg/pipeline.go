@@ -56,11 +56,11 @@ func (p *Pipeline) Append(key string, value []byte) {
 }
 
 func (p *Pipeline) Decr(key string) {
-	p.commands = append(p.commands, &integerResCommand{key: key})
+	p.commands = append(p.commands, &stringDecrCommand{key: key})
 }
 
 func (p *Pipeline) DecrBy(key string, decrement int64) {
-	p.commands = append(p.commands, &integerDecrByCommand{key: key, decrement: decrement})
+	p.commands = append(p.commands, &stringDecrByCommand{key: key, decrement: decrement})
 }
 
 func (p *Pipeline) GetDel(key string) {
@@ -97,4 +97,12 @@ func (p *Pipeline) GetRange(key string, start int64, end int64) {
 
 func (p *Pipeline) GetSet(key string, value []byte) {
 	p.commands = append(p.commands, &stringGetSetCommand{key: key, value: value})
+}
+
+func (p *Pipeline) Incr(key string) {
+	p.commands = append(p.commands, &stringIncrCommand{key: key})
+}
+
+func (p *Pipeline) IncrBy(key string, increment int64) {
+	p.commands = append(p.commands, &stringIncrByCommand{key: key, increment: increment})
 }

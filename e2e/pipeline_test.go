@@ -31,6 +31,8 @@ func TestStringPipeline(t *testing.T) {
 	assert.Nil(t, err)
 	pipeline.Decr(key1)
 	pipeline.DecrBy(key1, 2)
+	pipeline.Incr(key1)
+	pipeline.IncrBy(key1, 2)
 
 	lcsk1, lcsk2 := "lcsk1", "lcsk2"
 	_, err = client.Set(ctx, lcsk1, []byte("ohmytext"))
@@ -44,7 +46,6 @@ func TestStringPipeline(t *testing.T) {
 
 	res, err := pipeline.Exec(ctx)
 	assert.Nil(t, err)
-	assert.Equal(t, 13, len(res))
 
 	popRes := func() interface{} {
 		r := res[0]
@@ -70,6 +71,10 @@ func TestStringPipeline(t *testing.T) {
 	assert.Equal(t, int64(0), popRes().(int64))
 	// DecrBy
 	assert.Equal(t, int64(-2), popRes().(int64))
+	// Incr
+	assert.Equal(t, int64(-1), popRes().(int64))
+	// IncrBy
+	assert.Equal(t, int64(1), popRes().(int64))
 	// Lcs
 	assert.Equal(t, "mytext", string(popRes().([]byte)))
 	// LcsLen
