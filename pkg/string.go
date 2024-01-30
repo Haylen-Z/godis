@@ -409,3 +409,29 @@ func (c *client) LcsIdxWithMatchLen(ctx context.Context, key1 string, key2 strin
 	}
 	return response.(LcsIdxRes), nil
 }
+
+type stringGetRangeCommand struct {
+	key   string
+	start int64
+	end   int64
+}
+
+func (c *stringGetRangeCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	a := func() []string {
+		return []string{strconv.FormatInt(c.start, 10), strconv.FormatInt(c.end, 10)}
+	}
+	return sendReqWithKey(ctx, protocol, "GETRANGE", c.key, []arg{a})
+}
+
+func (c *stringGetRangeCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	return readRespStringOrNil(ctx, protocol)
+}
+
+func (c *client) GetRange(ctx context.Context, key string, start int64, end int64) (*[]byte, error) {
+	cmd := &stringGetRangeCommand{key: key, start: start, end: end}
+	res, err := c.exec(ctx, cmd)
+	if err != nil {
+		return nil, err
+	}
+	return res.(*[]byte), nil
+}

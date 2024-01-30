@@ -254,3 +254,18 @@ func TestLcs(t *testing.T) {
 	assert.Equal(t, 8, m.Pos2[1])
 	assert.Equal(t, 4, m.Len)
 }
+
+func TestGetRange(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+
+	k := "kgetrange"
+	_, err := client.Set(ctx, k, []byte("hello"))
+	assert.Nil(t, err)
+
+	res, err := client.GetRange(ctx, k, 0, 3)
+	assert.Nil(t, err)
+	assert.Equal(t, "hell", string(*res))
+}

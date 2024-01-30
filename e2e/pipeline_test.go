@@ -21,6 +21,7 @@ func TestStringPipeline(t *testing.T) {
 	pipeline.Set(key, []byte(val))
 	pipeline.Get(key)
 	pipeline.GetEX(key)
+	pipeline.GetRange(key, 1, 3)
 	pipeline.Append(key, []byte("1"))
 	pipeline.GetDel(key)
 
@@ -42,28 +43,36 @@ func TestStringPipeline(t *testing.T) {
 
 	res, err := pipeline.Exec(ctx)
 	assert.Nil(t, err)
-	assert.Equal(t, 11, len(res))
+	assert.Equal(t, 12, len(res))
+
+	popRes := func() interface{} {
+		r := res[0]
+		res = res[1:]
+		return r
+	}
 
 	// Set
-	assert.True(t, res[0].(bool))
+	assert.True(t, popRes().(bool))
 	// Get
-	assert.Equal(t, val, string(*res[1].(*[]byte)))
+	assert.Equal(t, val, string(*popRes().(*[]byte)))
 	// GetEX
-	assert.Equal(t, val, string(*res[2].(*[]byte)))
+	assert.Equal(t, val, string(*popRes().(*[]byte)))
+	// GetRange
+	assert.Equal(t, "orl", string(*popRes().(*[]byte)))
 	// Append
-	assert.Equal(t, int64(6), res[3].(int64))
+	assert.Equal(t, int64(6), popRes().(int64))
 	// GetDel
-	assert.Equal(t, val+"1", string(*res[4].(*[]byte)))
+	assert.Equal(t, val+"1", string(*popRes().(*[]byte)))
 	// Decr
-	assert.Equal(t, int64(0), res[5].(int64))
+	assert.Equal(t, int64(0), popRes().(int64))
 	// DecrBy
-	assert.Equal(t, int64(-2), res[6].(int64))
+	assert.Equal(t, int64(-2), popRes().(int64))
 	// Lcs
-	assert.Equal(t, "mytext", string(res[7].([]byte)))
+	assert.Equal(t, "mytext", string(popRes().([]byte)))
 	// LcsLen
-	assert.Equal(t, int64(6), res[8].(int64))
+	assert.Equal(t, int64(6), popRes().(int64))
 	// LcsIdx
-	assert.Equal(t, 2, len(res[9].(pkg.LcsIdxRes).Matches))
+	assert.Equal(t, 2, len(popRes().(pkg.LcsIdxRes).Matches))
 	// LcsIdxWithMatchLen
-	assert.Equal(t, 2, res[10].(pkg.LcsIdxRes).Matches[1].Len)
+	assert.Equal(t, 2, popRes().(pkg.LcsIdxRes).Matches[1].Len)
 }

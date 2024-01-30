@@ -90,3 +90,7 @@ func (p *Pipeline) LcsIdx(key1 string, key2 string, args ...arg) {
 func (p *Pipeline) LcsIdxWithMatchLen(key1 string, key2 string, args ...arg) {
 	p.commands = append(p.commands, &stringLcsIdxWithMatchLenCommand{key1: key1, key2: key2, args: args})
 }
+
+func (p *Pipeline) GetRange(key string, start int64, end int64) {
+	p.commands = append(p.commands, &stringGetRangeCommand{key: key, start: start, end: end})
+}

@@ -56,13 +56,14 @@ type Client interface {
 	Pipeline() *Pipeline
 
 	// String
-	Get(ctx context.Context, key string) (*[]byte, error)
-	Set(ctx context.Context, key string, value []byte, args ...arg) (bool, error)
 	Append(ctx context.Context, key string, value []byte) (int64, error)
 	Decr(ctx context.Context, key string) (int64, error)
 	DecrBy(ctx context.Context, key string, decrement int64) (int64, error)
+	Get(ctx context.Context, key string) (*[]byte, error)
 	GetDel(ctx context.Context, key string) (*[]byte, error)
 	GetEX(ctx context.Context, key string, args ...arg) (*[]byte, error)
+	GetRange(ctx context.Context, key string, start int64, end int64) (*[]byte, error)
+	Set(ctx context.Context, key string, value []byte, args ...arg) (bool, error)
 	MGet(ctx context.Context, keys ...string) ([]*[]byte, error)
 	Lcs(ctx context.Context, key1 string, key2 string, args ...arg) ([]byte, error)
 	LcsLen(ctx context.Context, key1 string, key2 string) (int64, error)
