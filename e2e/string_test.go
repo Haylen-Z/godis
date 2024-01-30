@@ -273,3 +273,22 @@ func TestGetRange(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "llo", string(res))
 }
+
+func TestGetSet(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+
+	k := "kgetset"
+	_, err := client.Set(ctx, k, []byte("hello"))
+	assert.Nil(t, err)
+
+	res, err := client.GetSet(ctx, k, []byte("world"))
+	assert.Nil(t, err)
+	assert.Equal(t, "hello", string(*res))
+
+	res, err = client.Get(ctx, k)
+	assert.Nil(t, err)
+	assert.Equal(t, "world", string(*res))
+}

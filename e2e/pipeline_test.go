@@ -24,6 +24,7 @@ func TestStringPipeline(t *testing.T) {
 	pipeline.GetRange(key, 1, 3)
 	pipeline.Append(key, []byte("1"))
 	pipeline.GetDel(key)
+	pipeline.GetSet(key, []byte("oook"))
 
 	key1 := "kstringpipeline1"
 	_, err := client.Set(ctx, key1, []byte("1"))
@@ -43,7 +44,7 @@ func TestStringPipeline(t *testing.T) {
 
 	res, err := pipeline.Exec(ctx)
 	assert.Nil(t, err)
-	assert.Equal(t, 12, len(res))
+	assert.Equal(t, 13, len(res))
 
 	popRes := func() interface{} {
 		r := res[0]
@@ -63,6 +64,8 @@ func TestStringPipeline(t *testing.T) {
 	assert.Equal(t, int64(6), popRes().(int64))
 	// GetDel
 	assert.Equal(t, val+"1", string(*popRes().(*[]byte)))
+	// GetSet
+	assert.Equal(t, (*[]byte)(nil), popRes())
 	// Decr
 	assert.Equal(t, int64(0), popRes().(int64))
 	// DecrBy

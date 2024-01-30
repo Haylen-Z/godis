@@ -409,3 +409,22 @@ func (c *client) GetRange(ctx context.Context, key string, start int64, end int6
 	r, err := c.exec(ctx, cmd)
 	return r.([]byte), err
 }
+
+type stringGetSetCommand struct {
+	key   string
+	value []byte
+}
+
+func (c *stringGetSetCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	return sendReqWithKeyValue(ctx, protocol, "GETSET", c.key, c.value, nil)
+}
+
+func (c *stringGetSetCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	return readRespStringOrNil(ctx, protocol)
+}
+
+func (c *client) GetSet(ctx context.Context, key string, value []byte) (*[]byte, error) {
+	cmd := &stringGetSetCommand{key: key, value: value}
+	r, err := c.exec(ctx, cmd)
+	return r.(*[]byte), err
+}
