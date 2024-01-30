@@ -117,16 +117,16 @@ type connectionPool struct {
 	closed         bool
 	conIdleTime    time.Duration
 	conDialTimeOut time.Duration
+	maxIdleConNum  uint
 	conCloseChan   chan Connection
 }
 
-func NewConnectionPool(address string, maxConNum uint, conDialTimeOut time.Duration, conIdleTime time.Duration) ConnectionPool {
+func NewConnectionPool(address string, maxConNum uint, maxIdleConNum uint, conDialTimeOut time.Duration, conIdleTime time.Duration) ConnectionPool {
 	p := &connectionPool{mutex: &sync.Mutex{}, address: address, MaxConNum: maxConNum,
 		newConnection: NewConnection, conIdleTime: conIdleTime, conCloseChan: make(chan Connection),
 		conDialTimeOut: conDialTimeOut}
 	p.startCloseConWorker()
 	return p
-
 }
 
 func (p *connectionPool) startCloseConWorker() {
@@ -139,11 +139,16 @@ func (p *connectionPool) startCloseConWorker() {
 	}()
 }
 
+func (p *connectionPool) popCon() Connection {
+	con := p.pool[len(p.pool)-1]
+	p.pool[len(p.pool)-1] = nil
+	p.pool = p.pool[:len(p.pool)-1]
+	return con
+}
+
 func (p *connectionPool) tryGetHealthConn() Connection {
 	for len(p.pool) > 0 {
-		con := p.pool[len(p.pool)-1]
-		p.pool = p.pool[:len(p.pool)-1]
-		p.UsedConNum++
+		con := p.popCon()
 		if time.Since(con.GetLastUsedAt()) > p.conIdleTime {
 			p.AllConNum--
 			p.conCloseChan <- con
@@ -172,9 +177,19 @@ func (p *connectionPool) GetConnection() (Connection, error) {
 			return nil, err
 		}
 		p.AllConNum++
-		p.UsedConNum++
+
 	}
+	p.clearIdleCon()
+	p.UsedConNum++
 	return con, nil
+}
+
+func (p *connectionPool) clearIdleCon() {
+	if p.maxIdleConNum != 0 && len(p.pool) > int(p.maxIdleConNum) {
+		con := p.popCon()
+		p.AllConNum--
+		p.conCloseChan <- con
+	}
 }
 
 func (p *connectionPool) Release(conn Connection) error {
@@ -185,15 +200,13 @@ func (p *connectionPool) Release(conn Connection) error {
 		return ErrClosedPool
 	}
 
+	p.UsedConNum--
 	if conn.IsBroken() {
 		p.AllConNum--
-		p.UsedConNum--
 		p.conCloseChan <- conn
 		return nil
 	}
-
 	p.pool = append(p.pool, conn)
-	p.UsedConNum--
 	return nil
 }
 

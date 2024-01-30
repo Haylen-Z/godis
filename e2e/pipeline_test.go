@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Haylen-Z/godis/pkg"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,27 +21,66 @@ func TestStringPipeline(t *testing.T) {
 	pipeline.Set(key, []byte(val))
 	pipeline.Get(key)
 	pipeline.GetEX(key)
+	pipeline.GetRange(key, 1, 3)
 	pipeline.Append(key, []byte("1"))
 	pipeline.GetDel(key)
+	pipeline.GetSet(key, []byte("oook"))
+
+	key1 := "kstringpipeline1"
+	_, err := client.Set(ctx, key1, []byte("1"))
+	assert.Nil(t, err)
+	pipeline.Decr(key1)
+	pipeline.DecrBy(key1, 2)
+	pipeline.Incr(key1)
+	pipeline.IncrBy(key1, 2)
+
+	lcsk1, lcsk2 := "lcsk1", "lcsk2"
+	_, err = client.Set(ctx, lcsk1, []byte("ohmytext"))
+	assert.Nil(t, err)
+	_, err = client.Set(ctx, lcsk2, []byte("mynewtext"))
+	assert.Nil(t, err)
+	pipeline.Lcs(lcsk1, lcsk2)
+	pipeline.LcsLen(lcsk1, lcsk2)
+	pipeline.LcsIdx(lcsk1, lcsk2)
+	pipeline.LcsIdxWithMatchLen(lcsk1, lcsk2)
 
 	res, err := pipeline.Exec(ctx)
 	assert.Nil(t, err)
-	assert.Equal(t, 5, len(res))
 
-	assert.True(t, res[0].(bool))
-	assert.Equal(t, val, string(*res[1].(*[]byte)))
-	assert.Equal(t, val, string(*res[2].(*[]byte)))
-	assert.Equal(t, int64(6), res[3].(int64))
-	assert.Equal(t, val+"1", string(*res[4].(*[]byte)))
+	popRes := func() interface{} {
+		r := res[0]
+		res = res[1:]
+		return r
+	}
 
-	_, err = client.Set(ctx, key, []byte("1"))
-	assert.Nil(t, err)
-	pipeline = client.Pipeline()
-	pipeline.Decr(key)
-	pipeline.DecrBy(key, 2)
-
-	res, err = pipeline.Exec(ctx)
-	assert.Nil(t, err)
-	assert.Equal(t, int64(0), res[0].(int64))
-	assert.Equal(t, int64(-2), res[1].(int64))
+	// Set
+	assert.True(t, popRes().(bool))
+	// Get
+	assert.Equal(t, val, string(*popRes().(*[]byte)))
+	// GetEX
+	assert.Equal(t, val, string(*popRes().(*[]byte)))
+	// GetRange
+	assert.Equal(t, "orl", string(popRes().([]byte)))
+	// Append
+	assert.Equal(t, int64(6), popRes().(int64))
+	// GetDel
+	assert.Equal(t, val+"1", string(*popRes().(*[]byte)))
+	// GetSet
+	assert.Equal(t, (*[]byte)(nil), popRes())
+	// Decr
+	assert.Equal(t, int64(0), popRes().(int64))
+	// DecrBy
+	assert.Equal(t, int64(-2), popRes().(int64))
+	// Incr
+	assert.Equal(t, int64(-1), popRes().(int64))
+	// IncrBy
+	assert.Equal(t, int64(1), popRes().(int64))
+	// Lcs
+	assert.Equal(t, "mytext", string(popRes().([]byte)))
+	// LcsLen
+	assert.Equal(t, int64(6), popRes().(int64))
+	// LcsIdx
+	assert.Equal(t, 2, len(popRes().(pkg.LcsIdxRes).Matches))
+	// LcsIdxWithMatchLen
+	assert.Equal(t, 2, popRes().(pkg.LcsIdxRes).Matches[1].Len)
 }

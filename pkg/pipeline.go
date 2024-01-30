@@ -56,11 +56,11 @@ func (p *Pipeline) Append(key string, value []byte) {
 }
 
 func (p *Pipeline) Decr(key string) {
-	p.commands = append(p.commands, &integerResCommand{key: key})
+	p.commands = append(p.commands, &stringDecrCommand{key: key})
 }
 
 func (p *Pipeline) DecrBy(key string, decrement int64) {
-	p.commands = append(p.commands, &integerDecrByCommand{key: key, decrement: decrement})
+	p.commands = append(p.commands, &stringDecrByCommand{key: key, decrement: decrement})
 }
 
 func (p *Pipeline) GetDel(key string) {
@@ -73,4 +73,36 @@ func (p *Pipeline) GetEX(key string, optArgs ...arg) {
 
 func (p *Pipeline) MGet(keys ...string) {
 	p.commands = append(p.commands, &stringMGetCommand{keys: keys})
+}
+
+func (p *Pipeline) Lcs(key1 string, key2 string, args ...arg) {
+	p.commands = append(p.commands, &stringLcsCommand{key1: key1, key2: key2, args: args})
+}
+
+func (p *Pipeline) LcsLen(key1 string, key2 string) {
+	p.commands = append(p.commands, &stringLcsLenCommand{key1: key1, key2: key2})
+}
+
+func (p *Pipeline) LcsIdx(key1 string, key2 string, args ...arg) {
+	p.commands = append(p.commands, &stringLcsIdxCommand{key1: key1, key2: key2, args: args})
+}
+
+func (p *Pipeline) LcsIdxWithMatchLen(key1 string, key2 string, args ...arg) {
+	p.commands = append(p.commands, &stringLcsIdxWithMatchLenCommand{key1: key1, key2: key2, args: args})
+}
+
+func (p *Pipeline) GetRange(key string, start int64, end int64) {
+	p.commands = append(p.commands, &stringGetRangeCommand{key: key, start: start, end: end})
+}
+
+func (p *Pipeline) GetSet(key string, value []byte) {
+	p.commands = append(p.commands, &stringGetSetCommand{key: key, value: value})
+}
+
+func (p *Pipeline) Incr(key string) {
+	p.commands = append(p.commands, &stringIncrCommand{key: key})
+}
+
+func (p *Pipeline) IncrBy(key string, increment int64) {
+	p.commands = append(p.commands, &stringIncrByCommand{key: key, increment: increment})
 }

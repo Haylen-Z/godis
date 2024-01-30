@@ -254,3 +254,75 @@ func TestLcs(t *testing.T) {
 	assert.Equal(t, 8, m.Pos2[1])
 	assert.Equal(t, 4, m.Len)
 }
+
+func TestGetRange(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+
+	k := "kgetrange"
+	_, err := client.Set(ctx, k, []byte("hello"))
+	assert.Nil(t, err)
+
+	res, err := client.GetRange(ctx, k, 0, 3)
+	assert.Nil(t, err)
+	assert.Equal(t, "hell", string(res))
+
+	res, err = client.GetRange(ctx, k, 2, -1)
+	assert.Nil(t, err)
+	assert.Equal(t, "llo", string(res))
+}
+
+func TestGetSet(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+
+	k := "kgetset"
+	_, err := client.Set(ctx, k, []byte("hello"))
+	assert.Nil(t, err)
+
+	res, err := client.GetSet(ctx, k, []byte("world"))
+	assert.Nil(t, err)
+	assert.Equal(t, "hello", string(*res))
+
+	res, err = client.Get(ctx, k)
+	assert.Nil(t, err)
+	assert.Equal(t, "world", string(*res))
+}
+
+func TestIncr(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+
+	k := "kincr"
+	_, err := client.Set(ctx, k, []byte("0"))
+	assert.Nil(t, err)
+
+	res, err := client.Incr(ctx, k)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(1), res)
+}
+
+func TestIncrBy(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+
+	k := "kincrby"
+	_, err := client.Set(ctx, k, []byte("0"))
+	assert.Nil(t, err)
+
+	res, err := client.IncrBy(ctx, k, 2)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(2), res)
+
+	res, err = client.IncrBy(ctx, k, -3)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(-1), res)
+}

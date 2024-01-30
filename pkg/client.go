@@ -25,6 +25,9 @@ type ClientConfig struct {
 	DailTimeOut time.Duration
 	// The maximum amount of time a connection may be idle. Default is 30 minute.
 	ConIdleTime time.Duration
+	// the maxinum number of idle connections in the connection pool. Default is 0.
+	// If the value is 0, the maxinum number of idle connections is the same as the maxinum number of connections.
+	MaxIdleConns uint
 }
 
 func (c *ClientConfig) check() error {
@@ -53,13 +56,17 @@ type Client interface {
 	Pipeline() *Pipeline
 
 	// String
-	Get(ctx context.Context, key string) (*[]byte, error)
-	Set(ctx context.Context, key string, value []byte, args ...arg) (bool, error)
 	Append(ctx context.Context, key string, value []byte) (int64, error)
 	Decr(ctx context.Context, key string) (int64, error)
 	DecrBy(ctx context.Context, key string, decrement int64) (int64, error)
+	Get(ctx context.Context, key string) (*[]byte, error)
 	GetDel(ctx context.Context, key string) (*[]byte, error)
 	GetEX(ctx context.Context, key string, args ...arg) (*[]byte, error)
+	GetRange(ctx context.Context, key string, start int64, end int64) ([]byte, error)
+	GetSet(ctx context.Context, key string, value []byte) (*[]byte, error)
+	Incr(ctx context.Context, key string) (int64, error)
+	IncrBy(ctx context.Context, key string, increment int64) (int64, error)
+	Set(ctx context.Context, key string, value []byte, args ...arg) (bool, error)
 	MGet(ctx context.Context, keys ...string) ([]*[]byte, error)
 	Lcs(ctx context.Context, key1 string, key2 string, args ...arg) ([]byte, error)
 	LcsLen(ctx context.Context, key1 string, key2 string) (int64, error)
@@ -77,7 +84,7 @@ func NewClient(config *ClientConfig) (Client, error) {
 	if err := config.check(); err != nil {
 		return nil, err
 	}
-	cp := NewConnectionPool(config.Address, config.PoolMaxConns,
+	cp := NewConnectionPool(config.Address, config.PoolMaxConns, config.MaxIdleConns,
 		config.DailTimeOut, config.ConIdleTime)
 	return &client{conPool: cp, newProtocol: NewProtocol, config: config}, nil
 }
@@ -201,15 +208,16 @@ func sendReqWithKeyValue(ctx context.Context, protocol Protocol, cmd string, key
 	return protocol.WriteBulkStringArray(ctx, data)
 }
 
-func sendReqWithKeys(ctx context.Context, protocol Protocol, cmd string, keys []string) error {
+func sendReqWithKeys(ctx context.Context, protocol Protocol, cmd string, keys []string, args ...arg) error {
 	data := [][]byte{
 		[]byte(cmd),
 	}
 	data = append(data, stringsToBytes(keys)...)
+	data = append(data, getArgs(args)...)
 	return protocol.WriteBulkStringArray(ctx, data)
 }
 
-func readRespStringOrNil(ctx context.Context, protocol Protocol) (interface{}, error) {
+func readRespStringOrNil(ctx context.Context, protocol Protocol) (*[]byte, error) {
 	msgType, err := protocol.GetNextMsgType(ctx)
 	if err != nil {
 		return nil, err
@@ -221,6 +229,6 @@ func readRespStringOrNil(ctx context.Context, protocol Protocol) (interface{}, e
 		err := protocol.ReadNull(ctx)
 		return (*[]byte)(nil), err
 	default:
-		return (*[]byte)(nil), errors.New("unexpected response")
+		return (*[]byte)(nil), errors.WithStack(errUnexpectedRes)
 	}
 }
