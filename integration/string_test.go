@@ -193,7 +193,7 @@ func TestMGet(t *testing.T) {
 	_, err = client.Set(ctx, "k2", []byte("v2"))
 	assert.Nil(t, err)
 
-	res, err := client.MGet(ctx, "k1", "k2", "k3")
+	res, err := client.MGet(ctx, "k1", "k2", "k34322432g")
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(res))
 	assert.Equal(t, "v1", string(*res[0]))
@@ -325,4 +325,43 @@ func TestIncrBy(t *testing.T) {
 	res, err = client.IncrBy(ctx, k, -3)
 	assert.Nil(t, err)
 	assert.Equal(t, int64(-1), res)
+}
+
+func TestIncrByFloat(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+
+	k := "kincrbyfloat"
+
+	res, err := client.IncrByFloat(ctx, k, 2.1)
+	assert.Nil(t, err)
+	assert.True(t, res-2.1 < 1e-18)
+
+	res, err = client.IncrByFloat(ctx, k, -3.1)
+	assert.Nil(t, err)
+	assert.True(t, res+1 < 1e-18)
+}
+
+func TestMSet(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+
+	kvs := map[string][]byte{
+		"k1": []byte("v1"),
+		"k2": []byte("v2"),
+		"k3": []byte("v3"),
+	}
+	err := client.MSet(ctx, kvs)
+	assert.Nil(t, err)
+
+	res, err := client.MGet(ctx, "k1", "k2", "k3")
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(res))
+	assert.Equal(t, "v1", string(*res[0]))
+	assert.Equal(t, "v2", string(*res[1]))
+	assert.Equal(t, "v3", string(*res[2]))
 }

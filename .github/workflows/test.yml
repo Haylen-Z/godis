@@ -2,7 +2,7 @@ name: test & lint
 run-name: test & lint run on ${{ github.ref_name }}
 on: [push]
 jobs:
-  Lint:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -10,16 +10,16 @@ jobs:
         with:
           go-version: '>=1.17'
       - uses: golangci/golangci-lint-action@v3
-  Unit-Tests:
+  unit-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
         with:
           go-version: '>=1.17'
-      - name: Run tests
-        run: make pkg_test
-  E2E-Tests:
+      - name: unit test
+        run: make unit-test
+  integration-test:
     runs-on: ubuntu-latest
     services:
       redis:
@@ -31,5 +31,5 @@ jobs:
       - uses: actions/setup-go@v4
         with:
           go-version: '>=1.17'
-      - name: Run e2e tests
-        run: make e2e_test
+      - name: integration tests
+        run: make integration

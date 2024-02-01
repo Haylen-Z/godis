@@ -465,3 +465,56 @@ func (c *client) IncrBy(ctx context.Context, key string, increment int64) (int64
 	r, err := c.exec(ctx, cmd)
 	return r.(int64), err
 }
+
+type stringIncrByFloatCommand struct {
+	key       string
+	increment float64
+}
+
+func (c *stringIncrByFloatCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	return sendReqWithKeyValue(ctx, protocol, "INCRBYFLOAT", c.key, []byte(strconv.FormatFloat(c.increment, 'f', -1, 64)), nil)
+}
+
+func (c *stringIncrByFloatCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	r, err := protocol.ReadBulkString(ctx)
+	if err != nil {
+		return float64(0), err
+	}
+	return strconv.ParseFloat(string(*r), 64)
+}
+
+func (c *client) IncrByFloat(ctx context.Context, key string, increment float64) (float64, error) {
+	cmd := &stringIncrByFloatCommand{key: key, increment: increment}
+	r, err := c.exec(ctx, cmd)
+	return r.(float64), err
+}
+
+type stringMSetCommand struct {
+	kvs map[string][]byte
+}
+
+func (c *stringMSetCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	data := make([][]byte, 0, len(c.kvs)*2)
+	data = append(data, []byte("MSET"))
+	for k, v := range c.kvs {
+		data = append(data, []byte(k), v)
+	}
+	return protocol.WriteBulkStringArray(ctx, data)
+}
+
+func (c *stringMSetCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	r, err := protocol.ReadSimpleString(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if string(r) != "OK" {
+		return nil, errors.WithStack(errUnexpectedRes)
+	}
+	return nil, nil
+}
+
+func (c *client) MSet(ctx context.Context, kvs map[string][]byte) error {
+	cmd := &stringMSetCommand{kvs: kvs}
+	_, err := c.exec(ctx, cmd)
+	return err
+}

@@ -33,6 +33,7 @@ func TestStringPipeline(t *testing.T) {
 	pipeline.DecrBy(key1, 2)
 	pipeline.Incr(key1)
 	pipeline.IncrBy(key1, 2)
+	pipeline.IncrByFloat(key1, 2.0)
 
 	lcsk1, lcsk2 := "lcsk1", "lcsk2"
 	_, err = client.Set(ctx, lcsk1, []byte("ohmytext"))
@@ -43,6 +44,11 @@ func TestStringPipeline(t *testing.T) {
 	pipeline.LcsLen(lcsk1, lcsk2)
 	pipeline.LcsIdx(lcsk1, lcsk2)
 	pipeline.LcsIdxWithMatchLen(lcsk1, lcsk2)
+
+	msk1, msk2 := "msk1", "msk2"
+	msv1, msv2 := "msv1", "msv2"
+	pipeline.MSet(map[string][]byte{msk1: []byte(msv1), msk2: []byte(msv2)})
+	pipeline.MGet(msk1, msk2)
 
 	res, err := pipeline.Exec(ctx)
 	assert.Nil(t, err)
@@ -75,6 +81,8 @@ func TestStringPipeline(t *testing.T) {
 	assert.Equal(t, int64(-1), popRes().(int64))
 	// IncrBy
 	assert.Equal(t, int64(1), popRes().(int64))
+	// IncrByFloat
+	assert.True(t, 3.0-popRes().(float64) < 1e-18)
 	// Lcs
 	assert.Equal(t, "mytext", string(popRes().([]byte)))
 	// LcsLen
@@ -83,4 +91,10 @@ func TestStringPipeline(t *testing.T) {
 	assert.Equal(t, 2, len(popRes().(pkg.LcsIdxRes).Matches))
 	// LcsIdxWithMatchLen
 	assert.Equal(t, 2, popRes().(pkg.LcsIdxRes).Matches[1].Len)
+	// MSet
+	assert.Nil(t, popRes())
+	// MGet
+	mgRes := popRes().([]*[]byte)
+	assert.Equal(t, msv1, string(*mgRes[0]))
+	assert.Equal(t, msv2, string(*mgRes[1]))
 }
