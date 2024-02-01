@@ -43,14 +43,6 @@ func (c *client) Pipeline() *Pipeline {
 
 // String commands
 
-func (p *Pipeline) Get(key string) {
-	p.commands = append(p.commands, &stringGetCommand{key: key})
-}
-
-func (p *Pipeline) Set(key string, value []byte, args ...arg) {
-	p.commands = append(p.commands, &stringSetCommand{key: key, value: value, args: args})
-}
-
 func (p *Pipeline) Append(key string, value []byte) {
 	p.commands = append(p.commands, &stringAppendCommand{key: key, value: value})
 }
@@ -63,16 +55,16 @@ func (p *Pipeline) DecrBy(key string, decrement int64) {
 	p.commands = append(p.commands, &stringDecrByCommand{key: key, decrement: decrement})
 }
 
+func (p *Pipeline) Get(key string) {
+	p.commands = append(p.commands, &stringGetCommand{key: key})
+}
+
 func (p *Pipeline) GetDel(key string) {
 	p.commands = append(p.commands, &stringGetDelCommand{key: key})
 }
 
 func (p *Pipeline) GetEX(key string, optArgs ...arg) {
 	p.commands = append(p.commands, &stringGetEXCommand{key: key})
-}
-
-func (p *Pipeline) MGet(keys ...string) {
-	p.commands = append(p.commands, &stringMGetCommand{keys: keys})
 }
 
 func (p *Pipeline) Lcs(key1 string, key2 string, args ...arg) {
@@ -109,4 +101,16 @@ func (p *Pipeline) IncrBy(key string, increment int64) {
 
 func (p *Pipeline) IncrByFloat(key string, increment float64) {
 	p.commands = append(p.commands, &stringIncrByFloatCommand{key: key, increment: increment})
+}
+
+func (p *Pipeline) MGet(keys ...string) {
+	p.commands = append(p.commands, &stringMGetCommand{keys: keys})
+}
+
+func (p *Pipeline) MSet(kvs map[string][]byte) {
+	p.commands = append(p.commands, &stringMSetCommand{kvs: kvs})
+}
+
+func (p *Pipeline) Set(key string, value []byte, args ...arg) {
+	p.commands = append(p.commands, &stringSetCommand{key: key, value: value, args: args})
 }

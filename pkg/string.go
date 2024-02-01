@@ -488,3 +488,33 @@ func (c *client) IncrByFloat(ctx context.Context, key string, increment float64)
 	r, err := c.exec(ctx, cmd)
 	return r.(float64), err
 }
+
+type stringMSetCommand struct {
+	kvs map[string][]byte
+}
+
+func (c *stringMSetCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	data := make([][]byte, 0, len(c.kvs)*2)
+	data = append(data, []byte("MSET"))
+	for k, v := range c.kvs {
+		data = append(data, []byte(k), v)
+	}
+	return protocol.WriteBulkStringArray(ctx, data)
+}
+
+func (c *stringMSetCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	r, err := protocol.ReadSimpleString(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if string(r) != "OK" {
+		return nil, errors.WithStack(errUnexpectedRes)
+	}
+	return nil, nil
+}
+
+func (c *client) MSet(ctx context.Context, kvs map[string][]byte) error {
+	cmd := &stringMSetCommand{kvs: kvs}
+	_, err := c.exec(ctx, cmd)
+	return err
+}
