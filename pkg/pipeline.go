@@ -106,3 +106,7 @@ func (p *Pipeline) Incr(key string) {
 func (p *Pipeline) IncrBy(key string, increment int64) {
 	p.commands = append(p.commands, &stringIncrByCommand{key: key, increment: increment})
 }
+
+func (p *Pipeline) IncrByFloat(key string, increment float64) {
+	p.commands = append(p.commands, &stringIncrByFloatCommand{key: key, increment: increment})
+}

@@ -465,3 +465,26 @@ func (c *client) IncrBy(ctx context.Context, key string, increment int64) (int64
 	r, err := c.exec(ctx, cmd)
 	return r.(int64), err
 }
+
+type stringIncrByFloatCommand struct {
+	key       string
+	increment float64
+}
+
+func (c *stringIncrByFloatCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	return sendReqWithKeyValue(ctx, protocol, "INCRBYFLOAT", c.key, []byte(strconv.FormatFloat(c.increment, 'f', -1, 64)), nil)
+}
+
+func (c *stringIncrByFloatCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	r, err := protocol.ReadBulkString(ctx)
+	if err != nil {
+		return float64(0), err
+	}
+	return strconv.ParseFloat(string(*r), 64)
+}
+
+func (c *client) IncrByFloat(ctx context.Context, key string, increment float64) (float64, error) {
+	cmd := &stringIncrByFloatCommand{key: key, increment: increment}
+	r, err := c.exec(ctx, cmd)
+	return r.(float64), err
+}

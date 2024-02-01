@@ -66,6 +66,7 @@ type Client interface {
 	GetSet(ctx context.Context, key string, value []byte) (*[]byte, error)
 	Incr(ctx context.Context, key string) (int64, error)
 	IncrBy(ctx context.Context, key string, increment int64) (int64, error)
+	IncrByFloat(ctx context.Context, key string, increment float64) (float64, error)
 	Set(ctx context.Context, key string, value []byte, args ...arg) (bool, error)
 	MGet(ctx context.Context, keys ...string) ([]*[]byte, error)
 	Lcs(ctx context.Context, key1 string, key2 string, args ...arg) ([]byte, error)

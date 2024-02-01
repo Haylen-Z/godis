@@ -33,6 +33,7 @@ func TestStringPipeline(t *testing.T) {
 	pipeline.DecrBy(key1, 2)
 	pipeline.Incr(key1)
 	pipeline.IncrBy(key1, 2)
+	pipeline.IncrByFloat(key1, 2.0)
 
 	lcsk1, lcsk2 := "lcsk1", "lcsk2"
 	_, err = client.Set(ctx, lcsk1, []byte("ohmytext"))
@@ -75,6 +76,8 @@ func TestStringPipeline(t *testing.T) {
 	assert.Equal(t, int64(-1), popRes().(int64))
 	// IncrBy
 	assert.Equal(t, int64(1), popRes().(int64))
+	// IncrByFloat
+	assert.True(t, 3.0-popRes().(float64) < 1e-18)
 	// Lcs
 	assert.Equal(t, "mytext", string(popRes().([]byte)))
 	// LcsLen

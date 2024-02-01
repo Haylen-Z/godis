@@ -326,3 +326,20 @@ func TestIncrBy(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, int64(-1), res)
 }
+
+func TestIncrByFloat(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+
+	k := "kincrbyfloat"
+
+	res, err := client.IncrByFloat(ctx, k, 2.1)
+	assert.Nil(t, err)
+	assert.True(t, res-2.1 < 1e-18)
+
+	res, err = client.IncrByFloat(ctx, k, -3.1)
+	assert.Nil(t, err)
+	assert.True(t, res+1 < 1e-18)
+}
