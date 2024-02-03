@@ -156,17 +156,17 @@ type stringGetEXCommand struct {
 }
 
 func (c *stringGetEXCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	return sendReqWithKey(ctx, protocol, "GETEX", c.key, c.args)
+	return sendReq(ctx, protocol, []string{"GETEX", c.key}, c.args)
 }
 
 func (c *stringGetEXCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
-	return readRespStringOrNil(ctx, protocol)
+	return readRespStringOrNil2(ctx, protocol)
 }
 
-func (c *client) GetEX(ctx context.Context, key string, optArgs ...arg) (*[]byte, error) {
+func (c *client) GetEX(ctx context.Context, key string, optArgs ...arg) (*string, error) {
 	cmd := &stringGetEXCommand{key: key, args: optArgs}
 	res, err := c.exec(ctx, cmd)
-	return res.(*[]byte), err
+	return res.(*string), err
 }
 
 type stringMGetCommand struct {

@@ -173,7 +173,7 @@ func TestGetEX(t *testing.T) {
 
 	res, err = client.GetEX(ctx, k)
 	assert.Nil(t, err)
-	assert.Equal(t, "hello", string(*res))
+	assert.Equal(t, "hello", *res)
 
 	_, err = client.GetEX(ctx, k, pkg.EXATArg(100))
 	assert.Nil(t, err)
