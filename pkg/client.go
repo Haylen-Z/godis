@@ -59,7 +59,7 @@ type Client interface {
 	Append(ctx context.Context, key string, value string) (int64, error)
 	Decr(ctx context.Context, key string) (int64, error)
 	DecrBy(ctx context.Context, key string, decrement int64) (int64, error)
-	Get(ctx context.Context, key string) (*[]byte, error)
+	Get(ctx context.Context, key string) (*string, error)
 	GetDel(ctx context.Context, key string) (*[]byte, error)
 	GetEX(ctx context.Context, key string, args ...arg) (*[]byte, error)
 	GetRange(ctx context.Context, key string, start int64, end int64) ([]byte, error)

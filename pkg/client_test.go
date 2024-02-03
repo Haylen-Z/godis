@@ -59,5 +59,5 @@ func TestPipeline(t *testing.T) {
 	assert.True(t, res[0].(bool))
 
 	// Get result
-	assert.Equal(t, val, *res[1].(*[]byte))
+	assert.Equal(t, string(val), *res[1].(*string))
 }

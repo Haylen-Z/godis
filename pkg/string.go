@@ -31,17 +31,25 @@ type stringGetCommand struct {
 }
 
 func (c *stringGetCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	return sendReqWithKey(ctx, protocol, "GET", c.key, nil)
+	return sendReq(ctx, protocol, []string{"GET", c.key}, nil)
 }
 
 func (c *stringGetCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
-	return readRespStringOrNil(ctx, protocol)
+	r, err := readRespStringOrNil(ctx, protocol)
+	if err != nil {
+		return (*string)(nil), err
+	}
+	if r == nil {
+		return (*string)(nil), nil
+	}
+	str := string(*r)
+	return &str, err
 }
 
-func (c *client) Get(ctx context.Context, key string) (*[]byte, error) {
+func (c *client) Get(ctx context.Context, key string) (*string, error) {
 	cmd := &stringGetCommand{key: key}
 	res, err := c.exec(ctx, cmd)
-	return res.(*[]byte), err
+	return res.(*string), err
 }
 
 type stringSetCommand struct {
@@ -100,7 +108,7 @@ type stringDecrCommand struct {
 }
 
 func (c *stringDecrCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	return sendReqWithKey(ctx, protocol, "Decr", c.key, nil)
+	return sendReq(ctx, protocol, []string{"Decr", c.key}, nil)
 }
 
 func (c *stringDecrCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
@@ -119,7 +127,7 @@ type stringDecrByCommand struct {
 }
 
 func (c *stringDecrByCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	return sendReqWithKeyValue(ctx, protocol, "DECRBY", c.key, []byte(strconv.FormatInt(c.decrement, 10)), nil)
+	return sendReq(ctx, protocol, []string{"DECRBY", c.key, strconv.FormatInt(c.decrement, 10)}, nil)
 }
 
 func (c *stringDecrByCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {

@@ -62,7 +62,7 @@ func TestStringPipeline(t *testing.T) {
 	// Set
 	assert.True(t, popRes().(bool))
 	// Get
-	assert.Equal(t, val, string(*popRes().(*[]byte)))
+	assert.Equal(t, val, *popRes().(*string))
 	// GetEX
 	assert.Equal(t, val, string(*popRes().(*[]byte)))
 	// GetRange

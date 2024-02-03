@@ -152,9 +152,9 @@ func TestStringGetAndDel(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "hello", string(*res))
 
-	res, err = client.Get(ctx, k)
+	res1, err := client.Get(ctx, k)
 	assert.Nil(t, err)
-	assert.Nil(t, res)
+	assert.Nil(t, res1)
 }
 
 func TestGetEX(t *testing.T) {
@@ -288,9 +288,9 @@ func TestGetSet(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "hello", string(*res))
 
-	res, err = client.Get(ctx, k)
+	res1, err := client.Get(ctx, k)
 	assert.Nil(t, err)
-	assert.Equal(t, "world", string(*res))
+	assert.Equal(t, "world", *res1)
 }
 
 func TestIncr(t *testing.T) {
