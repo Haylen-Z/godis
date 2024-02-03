@@ -150,7 +150,7 @@ func TestStringGetAndDel(t *testing.T) {
 
 	res, err = client.GetDel(ctx, k)
 	assert.Nil(t, err)
-	assert.Equal(t, "hello", string(*res))
+	assert.Equal(t, "hello", *res)
 
 	res1, err := client.Get(ctx, k)
 	assert.Nil(t, err)

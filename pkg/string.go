@@ -35,15 +35,7 @@ func (c *stringGetCommand) SendReq(ctx context.Context, protocol Protocol) error
 }
 
 func (c *stringGetCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
-	r, err := readRespStringOrNil(ctx, protocol)
-	if err != nil {
-		return (*string)(nil), err
-	}
-	if r == nil {
-		return (*string)(nil), nil
-	}
-	str := string(*r)
-	return &str, err
+	return readRespStringOrNil2(ctx, protocol)
 }
 
 func (c *client) Get(ctx context.Context, key string) (*string, error) {
@@ -145,17 +137,17 @@ type stringGetDelCommand struct {
 }
 
 func (c *stringGetDelCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	return sendReqWithKey(ctx, protocol, "GETDEL", c.key, nil)
+	return sendReq(ctx, protocol, []string{"GETDEL", c.key}, nil)
 }
 
 func (c *stringGetDelCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
-	return readRespStringOrNil(ctx, protocol)
+	return readRespStringOrNil2(ctx, protocol)
 }
 
-func (c *client) GetDel(ctx context.Context, key string) (*[]byte, error) {
+func (c *client) GetDel(ctx context.Context, key string) (*string, error) {
 	cmd := &stringGetDelCommand{key: key}
 	res, err := c.exec(ctx, cmd)
-	return res.(*[]byte), err
+	return res.(*string), err
 }
 
 type stringGetEXCommand struct {

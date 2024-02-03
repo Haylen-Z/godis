@@ -70,7 +70,7 @@ func TestStringPipeline(t *testing.T) {
 	// Append
 	assert.Equal(t, int64(6), popRes().(int64))
 	// GetDel
-	assert.Equal(t, val+"1", string(*popRes().(*[]byte)))
+	assert.Equal(t, val+"1", string(*popRes().(*string)))
 	// GetSet
 	assert.Equal(t, (*[]byte)(nil), popRes())
 	// Decr

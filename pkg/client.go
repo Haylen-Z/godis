@@ -60,7 +60,7 @@ type Client interface {
 	Decr(ctx context.Context, key string) (int64, error)
 	DecrBy(ctx context.Context, key string, decrement int64) (int64, error)
 	Get(ctx context.Context, key string) (*string, error)
-	GetDel(ctx context.Context, key string) (*[]byte, error)
+	GetDel(ctx context.Context, key string) (*string, error)
 	GetEX(ctx context.Context, key string, args ...arg) (*[]byte, error)
 	GetRange(ctx context.Context, key string, start int64, end int64) ([]byte, error)
 	GetSet(ctx context.Context, key string, value []byte) (*[]byte, error)
@@ -241,5 +241,29 @@ func readRespStringOrNil(ctx context.Context, protocol Protocol) (*[]byte, error
 		return (*[]byte)(nil), err
 	default:
 		return (*[]byte)(nil), errors.WithStack(errUnexpectedRes)
+	}
+}
+
+func readRespStringOrNil2(ctx context.Context, protocol Protocol) (*string, error) {
+	msgType, err := protocol.GetNextMsgType(ctx)
+	if err != nil {
+		return nil, err
+	}
+	switch msgType {
+	case BulkStringType:
+		r, err := protocol.ReadBulkString(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if r == nil {
+			return nil, nil
+		}
+		s := string(*r)
+		return &s, nil
+	case NullType:
+		err := protocol.ReadNull(ctx)
+		return (*string)(nil), err
+	default:
+		return (*string)(nil), errors.WithStack(errUnexpectedRes)
 	}
 }
