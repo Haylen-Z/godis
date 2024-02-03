@@ -71,11 +71,11 @@ func TestStringAppend(t *testing.T) {
 	_, err := client.Set(ctx, k, []byte("iii"))
 	assert.Nil(t, err)
 
-	res, err := client.Append(ctx, k, []byte("iii"))
+	res, err := client.Append(ctx, k, "iii")
 	assert.Nil(t, err)
 	assert.Equal(t, int64(6), res)
 
-	res, err = client.Append(ctx, k, []byte("wwwww"))
+	res, err = client.Append(ctx, k, "wwwww")
 	assert.Nil(t, err)
 	assert.Equal(t, int64(11), res)
 
@@ -83,7 +83,7 @@ func TestStringAppend(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "iiiiiiwwwww", string(*val))
 
-	res, err = client.Append(ctx, k, []byte{})
+	res, err = client.Append(ctx, k, "")
 	assert.Nil(t, err)
 	assert.Equal(t, int64(11), res)
 	val, err = client.Get(ctx, k)

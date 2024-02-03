@@ -22,7 +22,7 @@ func TestStringPipeline(t *testing.T) {
 	pipeline.Get(key)
 	pipeline.GetEX(key)
 	pipeline.GetRange(key, 1, 3)
-	pipeline.Append(key, []byte("1"))
+	pipeline.Append(key, "1")
 	pipeline.GetDel(key)
 	pipeline.GetSet(key, []byte("oook"))
 

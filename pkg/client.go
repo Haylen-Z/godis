@@ -56,7 +56,7 @@ type Client interface {
 	Pipeline() *Pipeline
 
 	// String
-	Append(ctx context.Context, key string, value []byte) (int64, error)
+	Append(ctx context.Context, key string, value string) (int64, error)
 	Decr(ctx context.Context, key string) (int64, error)
 	DecrBy(ctx context.Context, key string, decrement int64) (int64, error)
 	Get(ctx context.Context, key string) (*[]byte, error)
@@ -189,6 +189,15 @@ func getArgs(args []arg) [][]byte {
 		res = append(res, arg()...)
 	}
 	return stringsToBytes(res)
+}
+
+func sendReq(ctx context.Context, protocol Protocol, strArgs []string, args []arg) error {
+	strs := make([]string, 0, len(strArgs))
+	strs = append(strs, strArgs...)
+	for _, a := range args {
+		strs = append(strs, a()...)
+	}
+	return protocol.WriteBulkStringArray(ctx, stringsToBytes(strs))
 }
 
 func sendReqWithKey(ctx context.Context, protocol Protocol, cmd string, key string, args []arg) error {

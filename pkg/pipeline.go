@@ -43,7 +43,7 @@ func (c *client) Pipeline() *Pipeline {
 
 // String commands
 
-func (p *Pipeline) Append(key string, value []byte) {
+func (p *Pipeline) Append(key string, value string) {
 	p.commands = append(p.commands, &stringAppendCommand{key: key, value: value})
 }
 

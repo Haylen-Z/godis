@@ -7,6 +7,25 @@ import (
 	"github.com/pkg/errors"
 )
 
+type stringAppendCommand struct {
+	key   string
+	value string
+}
+
+func (c *stringAppendCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	return sendReq(ctx, protocol, []string{"APPEND", c.key, c.value}, nil)
+}
+
+func (c *stringAppendCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	return protocol.ReadInteger(ctx)
+}
+
+func (c *client) Append(ctx context.Context, key string, value string) (int64, error) {
+	cmd := &stringAppendCommand{key: key, value: value}
+	res, err := c.exec(ctx, cmd)
+	return res.(int64), err
+}
+
 type stringGetCommand struct {
 	key string
 }
@@ -74,25 +93,6 @@ func (c *client) Set(ctx context.Context, key string, value []byte, optArgs ...a
 		return false, err
 	}
 	return res.(bool), nil
-}
-
-type stringAppendCommand struct {
-	key   string
-	value []byte
-}
-
-func (c *stringAppendCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	return sendReqWithKeyValue(ctx, protocol, "APPEND", c.key, c.value, nil)
-}
-
-func (c *stringAppendCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
-	return protocol.ReadInteger(ctx)
-}
-
-func (c *client) Append(ctx context.Context, key string, value []byte) (int64, error) {
-	cmd := &stringAppendCommand{key: key, value: value}
-	res, err := c.exec(ctx, cmd)
-	return res.(int64), err
 }
 
 type stringDecrCommand struct {
