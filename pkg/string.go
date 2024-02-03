@@ -232,10 +232,7 @@ type stringLcsLenCommand struct {
 }
 
 func (c *stringLcsLenCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	LEN := func() []string {
-		return []string{"LEN"}
-	}
-	return sendReqWithKeys(ctx, protocol, "LCS", []string{c.key1, c.key2}, LEN)
+	return sendReq(ctx, protocol, []string{"LCS", c.key1, c.key2, "LEN"}, nil)
 }
 
 func (c *stringLcsLenCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
@@ -245,10 +242,7 @@ func (c *stringLcsLenCommand) ReadResp(ctx context.Context, protocol Protocol) (
 func (c *client) LcsLen(ctx context.Context, key1 string, key2 string) (int64, error) {
 	cmd := &stringLcsLenCommand{key1: key1, key2: key2}
 	res, err := c.exec(ctx, cmd)
-	if err != nil {
-		return 0, err
-	}
-	return res.(int64), nil
+	return res.(int64), err
 }
 
 type LcsIdxMatch struct {
@@ -344,10 +338,7 @@ type stringLcsIdxCommand struct {
 }
 
 func (c *stringLcsIdxCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	IDX := func() []string {
-		return []string{"IDX"}
-	}
-	return sendReqWithKeys(ctx, protocol, "LCS", []string{c.key1, c.key2}, append(c.args, IDX)...)
+	return sendReq(ctx, protocol, []string{"LCS", c.key1, c.key2, "IDX"}, c.args)
 }
 
 func (c *stringLcsIdxCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
@@ -357,10 +348,7 @@ func (c *stringLcsIdxCommand) ReadResp(ctx context.Context, protocol Protocol) (
 func (c *client) LcsIdx(ctx context.Context, key1 string, key2 string, args ...arg) (LcsIdxRes, error) {
 	cmd := &stringLcsIdxCommand{key1: key1, key2: key2, args: args}
 	response, err := c.exec(ctx, cmd)
-	if err != nil {
-		return LcsIdxRes{}, err
-	}
-	return response.(LcsIdxRes), nil
+	return response.(LcsIdxRes), err
 }
 
 type stringLcsIdxWithMatchLenCommand struct {
@@ -370,10 +358,7 @@ type stringLcsIdxWithMatchLenCommand struct {
 }
 
 func (c *stringLcsIdxWithMatchLenCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	IDX_WITHMATCHLEN := func() []string {
-		return []string{"IDX", "WITHMATCHLEN"}
-	}
-	return sendReqWithKeys(ctx, protocol, "LCS", []string{c.key1, c.key2}, append(c.args, IDX_WITHMATCHLEN)...)
+	return sendReq(ctx, protocol, []string{"LCS", c.key1, c.key2, "IDX", "WITHMATCHLEN"}, c.args)
 }
 
 func (c *stringLcsIdxWithMatchLenCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
@@ -383,10 +368,7 @@ func (c *stringLcsIdxWithMatchLenCommand) ReadResp(ctx context.Context, protocol
 func (c *client) LcsIdxWithMatchLen(ctx context.Context, key1 string, key2 string, args ...arg) (LcsIdxRes, error) {
 	cmd := &stringLcsIdxWithMatchLenCommand{key1: key1, key2: key2, args: args}
 	response, err := c.exec(ctx, cmd)
-	if err != nil {
-		return LcsIdxRes{}, err
-	}
-	return response.(LcsIdxRes), nil
+	return response.(LcsIdxRes), err
 }
 
 type stringGetRangeCommand struct {
