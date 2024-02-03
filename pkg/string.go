@@ -431,7 +431,7 @@ type stringIncrCommand struct {
 }
 
 func (c *stringIncrCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	return sendReqWithKey(ctx, protocol, "INCR", c.key, nil)
+	return sendReq(ctx, protocol, []string{"INCR", c.key}, nil)
 }
 
 func (c *stringIncrCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
@@ -450,7 +450,7 @@ type stringIncrByCommand struct {
 }
 
 func (c *stringIncrByCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	return sendReqWithKeyValue(ctx, protocol, "INCRBY", c.key, []byte(strconv.FormatInt(c.increment, 10)), nil)
+	return sendReq(ctx, protocol, []string{"INCRBY", c.key, strconv.FormatInt(c.increment, 10)}, nil)
 }
 
 func (c *stringIncrByCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
@@ -469,7 +469,7 @@ type stringIncrByFloatCommand struct {
 }
 
 func (c *stringIncrByFloatCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	return sendReqWithKeyValue(ctx, protocol, "INCRBYFLOAT", c.key, []byte(strconv.FormatFloat(c.increment, 'f', -1, 64)), nil)
+	return sendReq(ctx, protocol, []string{"INCRBYFLOAT", c.key, strconv.FormatFloat(c.increment, 'f', -1, 64)}, nil)
 }
 
 func (c *stringIncrByFloatCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
