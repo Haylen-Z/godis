@@ -284,9 +284,9 @@ func TestGetSet(t *testing.T) {
 	_, err := client.Set(ctx, k, []byte("hello"))
 	assert.Nil(t, err)
 
-	res, err := client.GetSet(ctx, k, []byte("world"))
+	res, err := client.GetSet(ctx, k, "world")
 	assert.Nil(t, err)
-	assert.Equal(t, "hello", string(*res))
+	assert.Equal(t, "hello", *res)
 
 	res1, err := client.Get(ctx, k)
 	assert.Nil(t, err)

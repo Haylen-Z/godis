@@ -87,7 +87,7 @@ func (p *Pipeline) GetRange(key string, start int64, end int64) {
 	p.commands = append(p.commands, &stringGetRangeCommand{key: key, start: start, end: end})
 }
 
-func (p *Pipeline) GetSet(key string, value []byte) {
+func (p *Pipeline) GetSet(key string, value string) {
 	p.commands = append(p.commands, &stringGetSetCommand{key: key, value: value})
 }
 
