@@ -393,21 +393,18 @@ type stringGetRangeCommand struct {
 }
 
 func (c *stringGetRangeCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	a := func() []string {
-		return []string{strconv.FormatInt(c.start, 10), strconv.FormatInt(c.end, 10)}
-	}
-	return sendReqWithKey(ctx, protocol, "GETRANGE", c.key, []arg{a})
+	return sendReq(ctx, protocol, []string{"GETRANGE", c.key, strconv.FormatInt(c.start, 10), strconv.FormatInt(c.end, 10)}, nil)
 }
 
 func (c *stringGetRangeCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
 	r, err := protocol.ReadBulkString(ctx)
-	return *r, err
+	return string(*r), err
 }
 
-func (c *client) GetRange(ctx context.Context, key string, start int64, end int64) ([]byte, error) {
+func (c *client) GetRange(ctx context.Context, key string, start int64, end int64) (string, error) {
 	cmd := &stringGetRangeCommand{key: key, start: start, end: end}
 	r, err := c.exec(ctx, cmd)
-	return r.([]byte), err
+	return r.(string), err
 }
 
 type stringGetSetCommand struct {
