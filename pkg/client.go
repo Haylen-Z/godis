@@ -228,22 +228,6 @@ func sendReqWithKeys(ctx context.Context, protocol Protocol, cmd string, keys []
 	return protocol.WriteBulkStringArray(ctx, data)
 }
 
-func readRespStringOrNil(ctx context.Context, protocol Protocol) (*[]byte, error) {
-	msgType, err := protocol.GetNextMsgType(ctx)
-	if err != nil {
-		return nil, err
-	}
-	switch msgType {
-	case BulkStringType:
-		return protocol.ReadBulkString(ctx)
-	case NullType:
-		err := protocol.ReadNull(ctx)
-		return (*[]byte)(nil), err
-	default:
-		return (*[]byte)(nil), errors.WithStack(errUnexpectedRes)
-	}
-}
-
 func readRespStringOrNil2(ctx context.Context, protocol Protocol) (*string, error) {
 	msgType, err := protocol.GetNextMsgType(ctx)
 	if err != nil {
