@@ -209,21 +209,21 @@ type stringLcsCommand struct {
 }
 
 func (c *stringLcsCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	return sendReqWithKeys(ctx, protocol, "LCS", []string{c.key1, c.key2}, c.args...)
+	return sendReq(ctx, protocol, []string{"LCS", c.key1, c.key2}, c.args)
 }
 
 func (c *stringLcsCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
 	r, err := protocol.ReadBulkString(ctx)
-	return *r, err
+	return string(*r), err
 }
 
-func (c *client) Lcs(ctx context.Context, key1 string, key2 string, args ...arg) ([]byte, error) {
+func (c *client) Lcs(ctx context.Context, key1 string, key2 string, args ...arg) (string, error) {
 	cmd := &stringLcsCommand{key1: key1, key2: key2, args: args}
 	res, err := c.exec(ctx, cmd)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	return res.([]byte), nil
+	return res.(string), nil
 }
 
 type stringLcsLenCommand struct {

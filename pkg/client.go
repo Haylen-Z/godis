@@ -68,7 +68,7 @@ type Client interface {
 	IncrBy(ctx context.Context, key string, increment int64) (int64, error)
 	IncrByFloat(ctx context.Context, key string, increment float64) (float64, error)
 	MGet(ctx context.Context, keys ...string) ([]*string, error)
-	Lcs(ctx context.Context, key1 string, key2 string, args ...arg) ([]byte, error)
+	Lcs(ctx context.Context, key1 string, key2 string, args ...arg) (string, error)
 	MSet(ctx context.Context, kvs map[string][]byte) error
 	LcsLen(ctx context.Context, key1 string, key2 string) (int64, error)
 	LcsIdx(ctx context.Context, key1 string, key2 string, args ...arg) (LcsIdxRes, error)

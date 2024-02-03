@@ -217,7 +217,7 @@ func TestLcs(t *testing.T) {
 
 	res, err := client.Lcs(ctx, k1, k2)
 	assert.Nil(t, err)
-	assert.Equal(t, "mytext", string(res))
+	assert.Equal(t, "mytext", res)
 
 	l, err := client.LcsLen(ctx, k1, k2)
 	assert.Nil(t, err)

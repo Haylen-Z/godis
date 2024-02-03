@@ -84,7 +84,7 @@ func TestStringPipeline(t *testing.T) {
 	// IncrByFloat
 	assert.True(t, 3.0-popRes().(float64) < 1e-18)
 	// Lcs
-	assert.Equal(t, "mytext", string(popRes().([]byte)))
+	assert.Equal(t, "mytext", popRes().(string))
 	// LcsLen
 	assert.Equal(t, int64(6), popRes().(int64))
 	// LcsIdx
