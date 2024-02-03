@@ -107,7 +107,7 @@ func (p *Pipeline) MGet(keys ...string) {
 	p.commands = append(p.commands, &stringMGetCommand{keys: keys})
 }
 
-func (p *Pipeline) MSet(kvs map[string][]byte) {
+func (p *Pipeline) MSet(kvs map[string]string) {
 	p.commands = append(p.commands, &stringMSetCommand{kvs: kvs})
 }
 

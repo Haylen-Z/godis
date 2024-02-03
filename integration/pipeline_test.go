@@ -47,7 +47,7 @@ func TestStringPipeline(t *testing.T) {
 
 	msk1, msk2 := "msk1", "msk2"
 	msv1, msv2 := "msv1", "msv2"
-	pipeline.MSet(map[string][]byte{msk1: []byte(msv1), msk2: []byte(msv2)})
+	pipeline.MSet(map[string]string{msk1: msv1, msk2: msv2})
 	pipeline.MGet(msk1, msk2)
 
 	res, err := pipeline.Exec(ctx)
