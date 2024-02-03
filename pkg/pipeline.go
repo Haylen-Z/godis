@@ -111,6 +111,6 @@ func (p *Pipeline) MSet(kvs map[string]string) {
 	p.commands = append(p.commands, &stringMSetCommand{kvs: kvs})
 }
 
-func (p *Pipeline) Set(key string, value []byte, args ...arg) {
+func (p *Pipeline) Set(key string, value string, args ...arg) {
 	p.commands = append(p.commands, &stringSetCommand{key: key, value: value, args: args})
 }

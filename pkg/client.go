@@ -73,7 +73,7 @@ type Client interface {
 	LcsLen(ctx context.Context, key1 string, key2 string) (int64, error)
 	LcsIdx(ctx context.Context, key1 string, key2 string, args ...arg) (LcsIdxRes, error)
 	LcsIdxWithMatchLen(ctx context.Context, key1 string, key2 string, args ...arg) (LcsIdxRes, error)
-	Set(ctx context.Context, key string, value []byte, args ...arg) (bool, error)
+	Set(ctx context.Context, key string, value string, args ...arg) (bool, error)
 }
 
 type client struct {
@@ -107,7 +107,7 @@ func (c *client) exec(ctx context.Context, cmd Command) (res interface{}, err er
 		}
 		err1 := c.conPool.Release(con)
 		if err1 != nil {
-			log.Println(err)
+			log.Println(err1)
 		}
 	}()
 	protocol := c.newProtocol(con)
@@ -183,14 +183,6 @@ func stringsToBytes(strs []string) [][]byte {
 	return res
 }
 
-func getArgs(args []arg) [][]byte {
-	var res []string
-	for _, arg := range args {
-		res = append(res, arg()...)
-	}
-	return stringsToBytes(res)
-}
-
 func sendReq(ctx context.Context, protocol Protocol, strArgs []string, args []arg) error {
 	strs := make([]string, 0, len(strArgs))
 	strs = append(strs, strArgs...)
@@ -200,17 +192,7 @@ func sendReq(ctx context.Context, protocol Protocol, strArgs []string, args []ar
 	return protocol.WriteBulkStringArray(ctx, stringsToBytes(strs))
 }
 
-func sendReqWithKeyValue(ctx context.Context, protocol Protocol, cmd string, key string, value []byte, args []arg) error {
-	data := [][]byte{
-		[]byte(cmd),
-		[]byte(key),
-		value,
-	}
-	data = append(data, getArgs(args)...)
-	return protocol.WriteBulkStringArray(ctx, data)
-}
-
-func readRespStringOrNil2(ctx context.Context, protocol Protocol) (*string, error) {
+func readRespStringOrNil(ctx context.Context, protocol Protocol) (*string, error) {
 	msgType, err := protocol.GetNextMsgType(ctx)
 	if err != nil {
 		return nil, err

@@ -23,76 +23,10 @@ func (c *stringAppendCommand) ReadResp(ctx context.Context, protocol Protocol) (
 func (c *client) Append(ctx context.Context, key string, value string) (int64, error) {
 	cmd := &stringAppendCommand{key: key, value: value}
 	res, err := c.exec(ctx, cmd)
-	return res.(int64), err
-}
-
-type stringGetCommand struct {
-	key string
-}
-
-func (c *stringGetCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	return sendReq(ctx, protocol, []string{"GET", c.key}, nil)
-}
-
-func (c *stringGetCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
-	return readRespStringOrNil2(ctx, protocol)
-}
-
-func (c *client) Get(ctx context.Context, key string) (*string, error) {
-	cmd := &stringGetCommand{key: key}
-	res, err := c.exec(ctx, cmd)
-	return res.(*string), err
-}
-
-type stringSetCommand struct {
-	key   string
-	value []byte
-	args  []arg
-}
-
-func (c *stringSetCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	return sendReqWithKeyValue(ctx, protocol, "SET", c.key, c.value, c.args)
-}
-
-func (c *stringSetCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
-	msgType, err := protocol.GetNextMsgType(ctx)
 	if err != nil {
-		return false, err
+		return 0, err
 	}
-	switch msgType {
-	case SimpleStringType:
-		res, err := protocol.ReadSimpleString(ctx)
-		if err != nil {
-			return false, err
-		}
-		if string(res) != "OK" {
-			return false, errors.WithStack(errUnexpectedRes)
-		}
-		return true, nil
-	case BulkStringType:
-		res, err := protocol.ReadBulkString(ctx)
-		if err != nil {
-			return false, err
-		}
-		if res != nil {
-			return false, errors.WithStack(errUnexpectedRes)
-		}
-		return false, nil
-	case NullType:
-		err := protocol.ReadNull(ctx)
-		return (*[]byte)(nil), err
-	default:
-		return false, errors.WithStack(errUnexpectedRes)
-	}
-}
-
-func (c *client) Set(ctx context.Context, key string, value []byte, optArgs ...arg) (bool, error) {
-	cmd := &stringSetCommand{key: key, value: value, args: optArgs}
-	res, err := c.exec(ctx, cmd)
-	if err != nil {
-		return false, err
-	}
-	return res.(bool), nil
+	return res.(int64), nil
 }
 
 type stringDecrCommand struct {
@@ -110,7 +44,10 @@ func (c *stringDecrCommand) ReadResp(ctx context.Context, protocol Protocol) (in
 func (c *client) Decr(ctx context.Context, key string) (int64, error) {
 	cmd := &stringDecrCommand{key: key}
 	res, err := c.exec(ctx, cmd)
-	return res.(int64), err
+	if err != nil {
+		return 0, err
+	}
+	return res.(int64), nil
 }
 
 type stringDecrByCommand struct {
@@ -129,7 +66,31 @@ func (c *stringDecrByCommand) ReadResp(ctx context.Context, protocol Protocol) (
 func (c *client) DecrBy(ctx context.Context, key string, decrement int64) (int64, error) {
 	cmd := &stringDecrByCommand{key: key, decrement: decrement}
 	res, err := c.exec(ctx, cmd)
-	return res.(int64), err
+	if err != nil {
+		return 0, err
+	}
+	return res.(int64), nil
+}
+
+type stringGetCommand struct {
+	key string
+}
+
+func (c *stringGetCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	return sendReq(ctx, protocol, []string{"GET", c.key}, nil)
+}
+
+func (c *stringGetCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	return readRespStringOrNil(ctx, protocol)
+}
+
+func (c *client) Get(ctx context.Context, key string) (*string, error) {
+	cmd := &stringGetCommand{key: key}
+	res, err := c.exec(ctx, cmd)
+	if err != nil {
+		return nil, err
+	}
+	return res.(*string), nil
 }
 
 type stringGetDelCommand struct {
@@ -141,13 +102,16 @@ func (c *stringGetDelCommand) SendReq(ctx context.Context, protocol Protocol) er
 }
 
 func (c *stringGetDelCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
-	return readRespStringOrNil2(ctx, protocol)
+	return readRespStringOrNil(ctx, protocol)
 }
 
 func (c *client) GetDel(ctx context.Context, key string) (*string, error) {
 	cmd := &stringGetDelCommand{key: key}
 	res, err := c.exec(ctx, cmd)
-	return res.(*string), err
+	if err != nil {
+		return nil, err
+	}
+	return res.(*string), nil
 }
 
 type stringGetEXCommand struct {
@@ -160,13 +124,16 @@ func (c *stringGetEXCommand) SendReq(ctx context.Context, protocol Protocol) err
 }
 
 func (c *stringGetEXCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
-	return readRespStringOrNil2(ctx, protocol)
+	return readRespStringOrNil(ctx, protocol)
 }
 
 func (c *client) GetEX(ctx context.Context, key string, optArgs ...arg) (*string, error) {
 	cmd := &stringGetEXCommand{key: key, args: optArgs}
 	res, err := c.exec(ctx, cmd)
-	return res.(*string), err
+	if err != nil {
+		return nil, err
+	}
+	return res.(*string), nil
 }
 
 type stringMGetCommand struct {
@@ -199,7 +166,10 @@ func (c *stringMGetCommand) ReadResp(ctx context.Context, protocol Protocol) (in
 func (c *client) MGet(ctx context.Context, keys ...string) ([]*string, error) {
 	cmd := &stringMGetCommand{keys: keys}
 	res, err := c.exec(ctx, cmd)
-	return res.([]*string), err
+	if err != nil {
+		return nil, err
+	}
+	return res.([]*string), nil
 }
 
 type stringLcsCommand struct {
@@ -242,7 +212,10 @@ func (c *stringLcsLenCommand) ReadResp(ctx context.Context, protocol Protocol) (
 func (c *client) LcsLen(ctx context.Context, key1 string, key2 string) (int64, error) {
 	cmd := &stringLcsLenCommand{key1: key1, key2: key2}
 	res, err := c.exec(ctx, cmd)
-	return res.(int64), err
+	if err != nil {
+		return 0, err
+	}
+	return res.(int64), nil
 }
 
 type LcsIdxMatch struct {
@@ -348,7 +321,10 @@ func (c *stringLcsIdxCommand) ReadResp(ctx context.Context, protocol Protocol) (
 func (c *client) LcsIdx(ctx context.Context, key1 string, key2 string, args ...arg) (LcsIdxRes, error) {
 	cmd := &stringLcsIdxCommand{key1: key1, key2: key2, args: args}
 	response, err := c.exec(ctx, cmd)
-	return response.(LcsIdxRes), err
+	if err != nil {
+		return LcsIdxRes{}, err
+	}
+	return response.(LcsIdxRes), nil
 }
 
 type stringLcsIdxWithMatchLenCommand struct {
@@ -368,7 +344,10 @@ func (c *stringLcsIdxWithMatchLenCommand) ReadResp(ctx context.Context, protocol
 func (c *client) LcsIdxWithMatchLen(ctx context.Context, key1 string, key2 string, args ...arg) (LcsIdxRes, error) {
 	cmd := &stringLcsIdxWithMatchLenCommand{key1: key1, key2: key2, args: args}
 	response, err := c.exec(ctx, cmd)
-	return response.(LcsIdxRes), err
+	if err != nil {
+		return LcsIdxRes{}, err
+	}
+	return response.(LcsIdxRes), nil
 }
 
 type stringGetRangeCommand struct {
@@ -389,7 +368,10 @@ func (c *stringGetRangeCommand) ReadResp(ctx context.Context, protocol Protocol)
 func (c *client) GetRange(ctx context.Context, key string, start int64, end int64) (string, error) {
 	cmd := &stringGetRangeCommand{key: key, start: start, end: end}
 	r, err := c.exec(ctx, cmd)
-	return r.(string), err
+	if err != nil {
+		return "", err
+	}
+	return r.(string), nil
 }
 
 type stringGetSetCommand struct {
@@ -402,13 +384,16 @@ func (c *stringGetSetCommand) SendReq(ctx context.Context, protocol Protocol) er
 }
 
 func (c *stringGetSetCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
-	return readRespStringOrNil2(ctx, protocol)
+	return readRespStringOrNil(ctx, protocol)
 }
 
 func (c *client) GetSet(ctx context.Context, key string, value string) (*string, error) {
 	cmd := &stringGetSetCommand{key: key, value: value}
 	r, err := c.exec(ctx, cmd)
-	return r.(*string), err
+	if err != nil {
+		return nil, err
+	}
+	return r.(*string), nil
 }
 
 type stringIncrCommand struct {
@@ -426,7 +411,10 @@ func (c *stringIncrCommand) ReadResp(ctx context.Context, protocol Protocol) (in
 func (c *client) Incr(ctx context.Context, key string) (int64, error) {
 	cmd := &stringIncrCommand{key: key}
 	r, err := c.exec(ctx, cmd)
-	return r.(int64), err
+	if err != nil {
+		return 0, err
+	}
+	return r.(int64), nil
 }
 
 type stringIncrByCommand struct {
@@ -445,7 +433,10 @@ func (c *stringIncrByCommand) ReadResp(ctx context.Context, protocol Protocol) (
 func (c *client) IncrBy(ctx context.Context, key string, increment int64) (int64, error) {
 	cmd := &stringIncrByCommand{key: key, increment: increment}
 	r, err := c.exec(ctx, cmd)
-	return r.(int64), err
+	if err != nil {
+		return 0, err
+	}
+	return r.(int64), nil
 }
 
 type stringIncrByFloatCommand struct {
@@ -468,7 +459,10 @@ func (c *stringIncrByFloatCommand) ReadResp(ctx context.Context, protocol Protoc
 func (c *client) IncrByFloat(ctx context.Context, key string, increment float64) (float64, error) {
 	cmd := &stringIncrByFloatCommand{key: key, increment: increment}
 	r, err := c.exec(ctx, cmd)
-	return r.(float64), err
+	if err != nil {
+		return 0, err
+	}
+	return r.(float64), nil
 }
 
 type stringMSetCommand struct {
@@ -499,4 +493,55 @@ func (c *client) MSet(ctx context.Context, kvs map[string]string) error {
 	cmd := &stringMSetCommand{kvs: kvs}
 	_, err := c.exec(ctx, cmd)
 	return err
+}
+
+type stringSetCommand struct {
+	key   string
+	value string
+	args  []arg
+}
+
+func (c *stringSetCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	return sendReq(ctx, protocol, []string{"SET", c.key, c.value}, c.args)
+}
+
+func (c *stringSetCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	msgType, err := protocol.GetNextMsgType(ctx)
+	if err != nil {
+		return false, err
+	}
+	switch msgType {
+	case SimpleStringType:
+		res, err := protocol.ReadSimpleString(ctx)
+		if err != nil {
+			return false, err
+		}
+		if string(res) != "OK" {
+			return false, errors.WithStack(errUnexpectedRes)
+		}
+		return true, nil
+	case BulkStringType:
+		res, err := protocol.ReadBulkString(ctx)
+		if err != nil {
+			return false, err
+		}
+		if res != nil {
+			return false, errors.WithStack(errUnexpectedRes)
+		}
+		return false, nil
+	case NullType:
+		err := protocol.ReadNull(ctx)
+		return false, err
+	default:
+		return false, errors.WithStack(errUnexpectedRes)
+	}
+}
+
+func (c *client) Set(ctx context.Context, key string, value string, optArgs ...arg) (bool, error) {
+	cmd := &stringSetCommand{key: key, value: value, args: optArgs}
+	res, err := c.exec(ctx, cmd)
+	if err != nil {
+		return false, err
+	}
+	return res.(bool), err
 }

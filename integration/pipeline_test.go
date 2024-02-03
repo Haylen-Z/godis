@@ -18,7 +18,7 @@ func TestStringPipeline(t *testing.T) {
 	key := "kstringpipeline"
 	val := "world"
 
-	pipeline.Set(key, []byte(val))
+	pipeline.Set(key, val)
 	pipeline.Get(key)
 	pipeline.GetEX(key)
 	pipeline.GetRange(key, 1, 3)
@@ -27,7 +27,7 @@ func TestStringPipeline(t *testing.T) {
 	pipeline.GetSet(key, "oook")
 
 	key1 := "kstringpipeline1"
-	_, err := client.Set(ctx, key1, []byte("1"))
+	_, err := client.Set(ctx, key1, "1")
 	assert.Nil(t, err)
 	pipeline.Decr(key1)
 	pipeline.DecrBy(key1, 2)
@@ -36,9 +36,9 @@ func TestStringPipeline(t *testing.T) {
 	pipeline.IncrByFloat(key1, 2.0)
 
 	lcsk1, lcsk2 := "lcsk1", "lcsk2"
-	_, err = client.Set(ctx, lcsk1, []byte("ohmytext"))
+	_, err = client.Set(ctx, lcsk1, "ohmytext")
 	assert.Nil(t, err)
-	_, err = client.Set(ctx, lcsk2, []byte("mynewtext"))
+	_, err = client.Set(ctx, lcsk2, "mynewtext")
 	assert.Nil(t, err)
 	pipeline.Lcs(lcsk1, lcsk2)
 	pipeline.LcsLen(lcsk1, lcsk2)

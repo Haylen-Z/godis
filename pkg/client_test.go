@@ -49,7 +49,7 @@ func TestPipeline(t *testing.T) {
 	mkProtocol.EXPECT().ReadBulkString(ctx).Return(&val, nil).Times(1)
 
 	pipeline := testClient.Pipeline()
-	pipeline.Set(string(key), val)
+	pipeline.Set(string(key), string(val))
 	pipeline.Get(string(key))
 	res, err := pipeline.Exec(ctx)
 	assert.Nil(t, err)

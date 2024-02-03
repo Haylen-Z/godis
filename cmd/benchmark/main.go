@@ -41,7 +41,7 @@ func exec(cli pkg.Client, loop int) {
 	for i := 0; i < loop; i++ {
 		key := "k" + strconv.Itoa(i)
 		v := "value" + strconv.Itoa(i)
-		_, err := cli.Set(context.TODO(), key, []byte(v), pkg.NXArg, pkg.EXArg(10))
+		_, err := cli.Set(context.TODO(), key, v, pkg.NXArg, pkg.EXArg(10))
 		if err != nil {
 			panic(err)
 		}
