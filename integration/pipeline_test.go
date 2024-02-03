@@ -94,7 +94,7 @@ func TestStringPipeline(t *testing.T) {
 	// MSet
 	assert.Nil(t, popRes())
 	// MGet
-	mgRes := popRes().([]*[]byte)
-	assert.Equal(t, msv1, string(*mgRes[0]))
-	assert.Equal(t, msv2, string(*mgRes[1]))
+	mgRes := popRes().([]*string)
+	assert.Equal(t, msv1, *mgRes[0])
+	assert.Equal(t, msv2, *mgRes[1])
 }

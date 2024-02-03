@@ -174,7 +174,8 @@ type stringMGetCommand struct {
 }
 
 func (c *stringMGetCommand) SendReq(ctx context.Context, protocol Protocol) error {
-	return sendReqWithKeys(ctx, protocol, "MGET", c.keys)
+	args := []string{"MGET"}
+	return sendReq(ctx, protocol, append(args, c.keys...), nil)
 }
 
 func (c *stringMGetCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
@@ -182,21 +183,23 @@ func (c *stringMGetCommand) ReadResp(ctx context.Context, protocol Protocol) (in
 	if err != nil {
 		return nil, err
 	}
-	res := make([]*[]byte, 0, len(arr))
+	res := make([]*string, 0, len(arr))
 	for _, item := range arr {
-		if item == nil {
-			res = append(res, nil)
+		b := item.(*[]byte)
+		if b == nil {
+			res = append(res, (*string)(nil))
 		} else {
-			res = append(res, item.(*[]byte))
+			s := string(*b)
+			res = append(res, &s)
 		}
 	}
 	return res, nil
 }
 
-func (c *client) MGet(ctx context.Context, keys ...string) ([]*[]byte, error) {
+func (c *client) MGet(ctx context.Context, keys ...string) ([]*string, error) {
 	cmd := &stringMGetCommand{keys: keys}
 	res, err := c.exec(ctx, cmd)
-	return res.([]*[]byte), err
+	return res.([]*string), err
 }
 
 type stringLcsCommand struct {

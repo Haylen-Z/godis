@@ -196,8 +196,8 @@ func TestMGet(t *testing.T) {
 	res, err := client.MGet(ctx, "k1", "k2", "k34322432g")
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(res))
-	assert.Equal(t, "v1", string(*res[0]))
-	assert.Equal(t, "v2", string(*res[1]))
+	assert.Equal(t, "v1", *res[0])
+	assert.Equal(t, "v2", *res[1])
 	assert.Nil(t, res[2])
 }
 
