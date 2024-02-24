@@ -56,6 +56,7 @@ func TestStringPipeline(t *testing.T) {
 	pipeline.SetNX("k", "v")
 	pipeline.SetRange("msk1", 1, "oo")
 	pipeline.StrLen("msk1")
+	pipeline.SubStr("msk2", 1, -2)
 
 	res, err := pipeline.Exec(ctx)
 	assert.Nil(t, err)
@@ -116,4 +117,6 @@ func TestStringPipeline(t *testing.T) {
 	assert.Equal(t, uint(4), popRes().(uint))
 	// StrLen
 	assert.Equal(t, uint(4), popRes().(uint))
+	// SubStr
+	assert.Equal(t, "sv", popRes().(string))
 }

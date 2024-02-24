@@ -138,3 +138,7 @@ func (p *Pipeline) SetRange(key string, offset uint, value string) {
 func (p *Pipeline) StrLen(key string) {
 	p.commands = append(p.commands, &stringStrLenCommand{key: key})
 }
+
+func (p *Pipeline) SubStr(key string, start, end int) {
+	p.commands = append(p.commands, &stringSubStrCommand{key: key, start: start, end: end})
+}

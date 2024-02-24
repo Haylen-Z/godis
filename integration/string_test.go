@@ -463,3 +463,26 @@ func TestStrLen(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, uint(5), r)
 }
+
+func TestSubStr(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+	k := "subk"
+	ok, err := client.Set(ctx, k, "okkko")
+	assert.Nil(t, err)
+	assert.True(t, ok)
+
+	r, err := client.SubStr(ctx, k, 2, 5)
+	assert.Nil(t, err)
+	assert.Equal(t, "kko", r)
+
+	r, err = client.SubStr(ctx, k, 21, 25)
+	assert.Nil(t, err)
+	assert.Equal(t, "", r)
+
+	r, err = client.SubStr(ctx, "kkk000000sub", 0, 1)
+	assert.Nil(t, err)
+	assert.Equal(t, "", r)
+}

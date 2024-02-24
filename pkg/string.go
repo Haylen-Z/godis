@@ -704,3 +704,30 @@ func (c *client) StrLen(ctx context.Context, key string) (uint, error) {
 	}
 	return res.(uint), err
 }
+
+type stringSubStrCommand struct {
+	key   string
+	start int
+	end   int
+}
+
+func (c *stringSubStrCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	return sendReq(ctx, protocol, []string{"SUBSTR", c.key, strconv.Itoa(c.start), strconv.Itoa(c.end)}, nil)
+}
+
+func (c *stringSubStrCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	r, err := protocol.ReadBulkString(ctx)
+	if err != nil {
+		return "", err
+	}
+	return string(*r), nil
+}
+
+func (c *client) SubStr(ctx context.Context, key string, start, end int) (string, error) {
+	cmd := &stringSubStrCommand{key: key, start: start, end: end}
+	res, err := c.exec(ctx, cmd)
+	if err != nil {
+		return "", err
+	}
+	return res.(string), err
+}

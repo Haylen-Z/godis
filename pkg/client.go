@@ -107,6 +107,7 @@ type Client interface {
 	SetNX(ctx context.Context, key, value string) (bool, error)
 	SetRange(ctx context.Context, key string, offset uint, value string) (uint, error)
 	StrLen(ctx context.Context, key string) (uint, error)
+	SubStr(ctx context.Context, key string, start, end int) (string, error)
 }
 
 type client struct {
