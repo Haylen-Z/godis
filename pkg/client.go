@@ -30,6 +30,7 @@ type ClientConfig struct {
 	MaxIdleConns uint
 
 	// TLS
+	Tls           bool
 	TlsCertPath   string
 	TlsCaCertPath string
 	TlsKeyPath    string
@@ -40,7 +41,8 @@ func (c *ClientConfig) toConPoolConfig() *ConnectionPoolConfig {
 		ConnectionConfig: ConnectionConfig{
 			Address:       c.Address,
 			DialTimeOut:   c.DailTimeOut,
-			TlsCertPath:   c.TlsCaCertPath,
+			Tls:           c.Tls,
+			TlsCertPath:   c.TlsCertPath,
 			TlsKeyPath:    c.TlsKeyPath,
 			TlsCaCertPath: c.TlsCaCertPath,
 		},
@@ -64,9 +66,8 @@ func (c *ClientConfig) check() error {
 		c.ConIdleTime = defaultConIdleTime
 	}
 
-	hasTlsCfg := (c.TlsCertPath != "" || c.TlsCaCertPath != "" || c.TlsKeyPath != "")
 	hasTlsEmptyCfg := (c.TlsCertPath == "" && c.TlsCaCertPath == "" && c.TlsKeyPath == "")
-	if hasTlsCfg && hasTlsEmptyCfg {
+	if c.Tls && hasTlsEmptyCfg {
 		return errors.Wrap(ErrGodis, "invalid tls config")
 	}
 	return nil

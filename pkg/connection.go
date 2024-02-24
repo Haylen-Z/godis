@@ -2,8 +2,11 @@ package pkg
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"log"
 	"net"
+	"os"
 	"sync"
 	"time"
 
@@ -24,6 +27,7 @@ type ConnectionConfig struct {
 	Address     string
 	DialTimeOut time.Duration
 
+	Tls           bool
 	TlsCertPath   string
 	TlsCaCertPath string
 	TlsKeyPath    string
@@ -60,12 +64,38 @@ func (c *connection) Connect() error {
 	}
 
 	var err error
-	c.con, err = net.DialTimeout("tcp", c.config.Address, c.config.DialTimeOut)
+	if c.config.Tls {
+		c.con, err = c.dialTls()
+	} else {
+		c.con, err = net.DialTimeout("tcp", c.config.Address, c.config.DialTimeOut)
+	}
 	if err != nil {
 		return errors.Wrap(err, "failed to connect to "+c.config.Address)
 	}
 	c.lastUsedAt = time.Now()
 	return nil
+}
+
+func (c *connection) dialTls() (net.Conn, error) {
+	cert, err := tls.LoadX509KeyPair(c.config.TlsCertPath, c.config.TlsKeyPath)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load cert")
+	}
+
+	pem, err := os.ReadFile(c.config.TlsCaCertPath)
+	if err != nil {
+		return nil, errors.New("failed to load ca")
+	}
+	caPool := x509.NewCertPool()
+	if ok := caPool.AppendCertsFromPEM(pem); !ok {
+		return nil, errors.New("failed to load ca")
+	}
+
+	return tls.Dial("tcp", c.config.Address, &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      caPool,
+	})
 }
 
 func (c *connection) Read(ctx context.Context, p []byte) (n int, err error) {
