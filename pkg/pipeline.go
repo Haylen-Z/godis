@@ -126,3 +126,7 @@ func (p *Pipeline) Set(key string, value string, args ...arg) {
 func (p *Pipeline) SetEX(key, value string, seconds uint64) {
 	p.commands = append(p.commands, &stringSetEXCommand{key: key, value: value, seconds: seconds})
 }
+
+func (p *Pipeline) SetNX(key, value string) {
+	p.commands = append(p.commands, &stringSetNXCommand{key: key, value: value})
+}

@@ -626,3 +626,29 @@ func (c *client) SetEX(ctx context.Context, key, value string, seconds uint64) e
 	_, err := c.exec(ctx, cmd)
 	return err
 }
+
+type stringSetNXCommand struct {
+	key   string
+	value string
+}
+
+func (c *stringSetNXCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	return sendReq(ctx, protocol, []string{"SETNX", c.key, c.value}, nil)
+}
+
+func (c *stringSetNXCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	r, err := protocol.ReadInteger(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return r == 1, nil
+}
+
+func (c *client) SetNX(ctx context.Context, key string, value string) (bool, error) {
+	cmd := &stringSetNXCommand{key: key, value: value}
+	res, err := c.exec(ctx, cmd)
+	if err != nil {
+		return false, err
+	}
+	return res.(bool), err
+}

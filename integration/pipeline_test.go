@@ -53,6 +53,7 @@ func TestStringPipeline(t *testing.T) {
 
 	pipeline.PSetEX("k", "v", 10)
 	pipeline.SetEX("k", "v", 10)
+	pipeline.SetNX("k", "v")
 
 	res, err := pipeline.Exec(ctx)
 	assert.Nil(t, err)
@@ -107,4 +108,6 @@ func TestStringPipeline(t *testing.T) {
 	assert.Nil(t, popRes())
 	// SetEX
 	assert.Nil(t, popRes())
+	// SetNX
+	assert.False(t, popRes().(bool))
 }

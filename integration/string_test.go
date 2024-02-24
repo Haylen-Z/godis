@@ -409,3 +409,23 @@ func TestSetEX(t *testing.T) {
 	err := client.SetEX(ctx, "k1", "v", 100)
 	assert.Nil(t, err)
 }
+
+func TestSetNx(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+
+	// TODO: Implement DELETE command to make this work
+	// ok, err := client.SetNX(ctx, "k", "v")
+	// assert.Nil(t, err)
+	// assert.True(t, ok)
+
+	ok, err := client.SetNX(ctx, "k", "v")
+	assert.Nil(t, err)
+	assert.False(t, ok)
+
+	// v, err := client.Get(ctx, "k1")
+	// assert.Nil(t, err)
+	// assert.Equal(t, kvs["k1"], *v)
+}

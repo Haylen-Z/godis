@@ -104,6 +104,7 @@ type Client interface {
 	LcsIdxWithMatchLen(ctx context.Context, key1 string, key2 string, args ...arg) (LcsIdxRes, error)
 	Set(ctx context.Context, key string, value string, args ...arg) (bool, error)
 	SetEX(ctx context.Context, key, value string, seconds uint64) error
+	SetNX(ctx context.Context, key, value string) (bool, error)
 }
 
 type client struct {
