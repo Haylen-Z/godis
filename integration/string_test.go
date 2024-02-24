@@ -429,3 +429,22 @@ func TestSetNx(t *testing.T) {
 	// assert.Nil(t, err)
 	// assert.Equal(t, kvs["k1"], *v)
 }
+
+func TestSetRange(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+	k := "k"
+	ok, err := client.Set(ctx, k, "okkko")
+	assert.Nil(t, err)
+	assert.True(t, ok)
+
+	r, err := client.SetRange(ctx, k, 1, "vv")
+	assert.Nil(t, err)
+	assert.Equal(t, uint(5), r)
+
+	v, err := client.Get(ctx, k)
+	assert.Nil(t, err)
+	assert.Equal(t, "ovvko", *v)
+}

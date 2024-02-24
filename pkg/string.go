@@ -652,3 +652,30 @@ func (c *client) SetNX(ctx context.Context, key string, value string) (bool, err
 	}
 	return res.(bool), err
 }
+
+type stringSetRangeCommand struct {
+	key    string
+	offset uint
+	value  string
+}
+
+func (c *stringSetRangeCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	return sendReq(ctx, protocol, []string{"SETRANGE", c.key, strconv.FormatUint(uint64(c.offset), 10), c.value}, nil)
+}
+
+func (c *stringSetRangeCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	r, err := protocol.ReadInteger(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return uint(r), nil
+}
+
+func (c *client) SetRange(ctx context.Context, key string, offset uint, value string) (uint, error) {
+	cmd := &stringSetRangeCommand{key: key, value: value, offset: offset}
+	res, err := c.exec(ctx, cmd)
+	if err != nil {
+		return 0, err
+	}
+	return res.(uint), err
+}
