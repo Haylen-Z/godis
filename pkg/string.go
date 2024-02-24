@@ -495,6 +495,33 @@ func (c *client) MSet(ctx context.Context, kvs map[string]string) error {
 	return err
 }
 
+type stringMSetNxCommand struct {
+	kvs map[string]string
+}
+
+func (c *stringMSetNxCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	data := make([]string, 0, len(c.kvs)*2)
+	data = append(data, "MSETNX")
+	for k, v := range c.kvs {
+		data = append(data, k, v)
+	}
+	return sendReq(ctx, protocol, data, nil)
+}
+
+func (c *stringMSetNxCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	r, err := protocol.ReadInteger(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return r == 1, nil
+}
+
+func (c *client) MSetNX(ctx context.Context, kvs map[string]string) (bool, error) {
+	cmd := &stringMSetNxCommand{kvs: kvs}
+	r, err := c.exec(ctx, cmd)
+	return r.(bool), err
+}
+
 type stringSetCommand struct {
 	key   string
 	value string

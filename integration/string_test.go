@@ -365,3 +365,29 @@ func TestMSet(t *testing.T) {
 	assert.Equal(t, "v2", *res[1])
 	assert.Equal(t, "v3", *res[2])
 }
+
+func TestMSetNx(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+
+	kvs := map[string]string{
+		"k1": "v1",
+		"k2": "v2",
+		"k3": "v3",
+	}
+
+	// TODO: Implement DELETE command to make this work
+	// ok, err := client.MSetNX(ctx, kvs)
+	// assert.Nil(t, err)
+	// assert.True(t, ok)
+
+	ok, err := client.MSetNX(ctx, kvs)
+	assert.Nil(t, err)
+	assert.False(t, ok)
+
+	// v, err := client.Get(ctx, "k1")
+	// assert.Nil(t, err)
+	// assert.Equal(t, kvs["k1"], *v)
+}
