@@ -51,6 +51,8 @@ func TestStringPipeline(t *testing.T) {
 	pipeline.MGet(msk1, msk2)
 	pipeline.MSetNX(map[string]string{msk1: msv1, msk2: msv2})
 
+	pipeline.PSetEX("k", "v", 10)
+
 	res, err := pipeline.Exec(ctx)
 	assert.Nil(t, err)
 
@@ -100,4 +102,6 @@ func TestStringPipeline(t *testing.T) {
 	assert.Equal(t, msv2, *mgRes[1])
 	// MSetNX
 	assert.False(t, popRes().(bool))
+	// PSetEX
+	assert.Nil(t, popRes())
 }

@@ -391,3 +391,12 @@ func TestMSetNx(t *testing.T) {
 	// assert.Nil(t, err)
 	// assert.Equal(t, kvs["k1"], *v)
 }
+
+func TestPSetEX(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+	err := client.PSetEX(ctx, "k1", "v", 100)
+	assert.Nil(t, err)
+}

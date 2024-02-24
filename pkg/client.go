@@ -97,6 +97,7 @@ type Client interface {
 	MGet(ctx context.Context, keys ...string) ([]*string, error)
 	MSet(ctx context.Context, kvs map[string]string) error
 	MSetNX(ctx context.Context, kvs map[string]string) (bool, error)
+	PSetEX(ctx context.Context, key, value string, milliseconds uint64) error
 	Lcs(ctx context.Context, key1 string, key2 string, args ...arg) (string, error)
 	LcsLen(ctx context.Context, key1 string, key2 string) (int64, error)
 	LcsIdx(ctx context.Context, key1 string, key2 string, args ...arg) (LcsIdxRes, error)

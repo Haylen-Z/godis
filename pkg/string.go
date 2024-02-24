@@ -522,6 +522,33 @@ func (c *client) MSetNX(ctx context.Context, kvs map[string]string) (bool, error
 	return r.(bool), err
 }
 
+type stringPSetEXCommand struct {
+	key          string
+	milliseconds uint64
+	value        string
+}
+
+func (c *stringPSetEXCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	return sendReq(ctx, protocol, []string{"PSETEX", c.key, strconv.FormatUint(c.milliseconds, 10), c.value}, nil)
+}
+
+func (c *stringPSetEXCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	r, err := protocol.ReadSimpleString(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if string(r) != "OK" {
+		return nil, errors.WithStack(errUnexpectedRes)
+	}
+	return nil, nil
+}
+
+func (c *client) PSetEX(ctx context.Context, key, value string, milliseconds uint64) error {
+	cmd := &stringPSetEXCommand{key: key, value: value, milliseconds: milliseconds}
+	_, err := c.exec(ctx, cmd)
+	return err
+}
+
 type stringSetCommand struct {
 	key   string
 	value string
