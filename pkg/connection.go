@@ -20,12 +20,20 @@ type Connection interface {
 	Close() error
 }
 
+type ConnectionConfig struct {
+	Address     string
+	DialTimeOut time.Duration
+
+	TlsCertPath   string
+	TlsCaCertPath string
+	TlsKeyPath    string
+}
+
 type connection struct {
-	con         net.Conn
-	address     string
-	lastUsedAt  time.Time
-	broken      bool
-	dialTimeOut time.Duration
+	con        net.Conn
+	lastUsedAt time.Time
+	broken     bool
+	config     *ConnectionConfig
 }
 
 func (c *connection) IsBroken() bool {
@@ -52,9 +60,9 @@ func (c *connection) Connect() error {
 	}
 
 	var err error
-	c.con, err = net.DialTimeout("tcp", c.address, c.dialTimeOut)
+	c.con, err = net.DialTimeout("tcp", c.config.Address, c.config.DialTimeOut)
 	if err != nil {
-		return errors.Wrap(err, "failed to connect to "+c.address)
+		return errors.Wrap(err, "failed to connect to "+c.config.Address)
 	}
 	c.lastUsedAt = time.Now()
 	return nil
@@ -96,8 +104,8 @@ func (c *connection) Write(ctx context.Context, p []byte) (n int, err error) {
 	return
 }
 
-func NewConnection(address string) Connection {
-	return &connection{address: address}
+func NewConnection(config *ConnectionConfig) Connection {
+	return &connection{config: config}
 }
 
 type ConnectionPool interface {
@@ -106,25 +114,30 @@ type ConnectionPool interface {
 	Close() error
 }
 
-type connectionPool struct {
-	address        string
-	UsedConNum     uint
-	AllConNum      uint
+type ConnectionPoolConfig struct {
+	ConnectionConfig
+	ConIdleTime    time.Duration
+	ConDialTimeOut time.Duration
+	MaxIdleConNum  uint
 	MaxConNum      uint
-	pool           []Connection
-	newConnection  func(address string) Connection
-	mutex          *sync.Mutex
-	closed         bool
-	conIdleTime    time.Duration
-	conDialTimeOut time.Duration
-	maxIdleConNum  uint
-	conCloseChan   chan Connection
 }
 
-func NewConnectionPool(address string, maxConNum uint, maxIdleConNum uint, conDialTimeOut time.Duration, conIdleTime time.Duration) ConnectionPool {
-	p := &connectionPool{mutex: &sync.Mutex{}, address: address, MaxConNum: maxConNum,
-		newConnection: NewConnection, conIdleTime: conIdleTime, conCloseChan: make(chan Connection),
-		conDialTimeOut: conDialTimeOut}
+type connectionPool struct {
+	UsedConNum    uint
+	AllConNum     uint
+	pool          []Connection
+	newConnection func(*ConnectionConfig) Connection
+	mutex         *sync.Mutex
+	closed        bool
+	config        *ConnectionPoolConfig
+	conCloseChan  chan Connection
+}
+
+func NewConnectionPool(config *ConnectionPoolConfig) ConnectionPool {
+	p := &connectionPool{mutex: &sync.Mutex{},
+		newConnection: NewConnection, conCloseChan: make(chan Connection),
+		config: config,
+	}
 	p.startCloseConWorker()
 	return p
 }
@@ -149,7 +162,7 @@ func (p *connectionPool) popCon() Connection {
 func (p *connectionPool) tryGetHealthConn() Connection {
 	for len(p.pool) > 0 {
 		con := p.popCon()
-		if time.Since(con.GetLastUsedAt()) > p.conIdleTime {
+		if time.Since(con.GetLastUsedAt()) > p.config.ConIdleTime {
 			p.AllConNum--
 			p.conCloseChan <- con
 			continue
@@ -169,10 +182,10 @@ func (p *connectionPool) GetConnection() (Connection, error) {
 
 	con := p.tryGetHealthConn()
 	if con == nil {
-		if p.AllConNum >= p.MaxConNum {
+		if p.AllConNum >= p.config.MaxConNum {
 			return nil, ErrConnectionPoolFull
 		}
-		con = p.newConnection(p.address)
+		con = p.newConnection(&p.config.ConnectionConfig)
 		if err := con.Connect(); err != nil {
 			return nil, err
 		}
@@ -185,7 +198,7 @@ func (p *connectionPool) GetConnection() (Connection, error) {
 }
 
 func (p *connectionPool) clearIdleCon() {
-	if p.maxIdleConNum != 0 && len(p.pool) > int(p.maxIdleConNum) {
+	if p.config.MaxIdleConNum != 0 && len(p.pool) > int(p.config.MaxIdleConNum) {
 		con := p.popCon()
 		p.AllConNum--
 		p.conCloseChan <- con

@@ -28,6 +28,26 @@ type ClientConfig struct {
 	// the maxinum number of idle connections in the connection pool. Default is 0.
 	// If the value is 0, the maxinum number of idle connections is the same as the maxinum number of connections.
 	MaxIdleConns uint
+
+	// TLS
+	TlsCertPath   string
+	TlsCaCertPath string
+	TlsKeyPath    string
+}
+
+func (c *ClientConfig) toConPoolConfig() *ConnectionPoolConfig {
+	return &ConnectionPoolConfig{
+		ConnectionConfig: ConnectionConfig{
+			Address:       c.Address,
+			DialTimeOut:   c.DailTimeOut,
+			TlsCertPath:   c.TlsCaCertPath,
+			TlsKeyPath:    c.TlsKeyPath,
+			TlsCaCertPath: c.TlsCaCertPath,
+		},
+		ConIdleTime:   c.ConIdleTime,
+		MaxConNum:     c.PoolMaxConns,
+		MaxIdleConNum: c.MaxIdleConns,
+	}
 }
 
 func (c *ClientConfig) check() error {
@@ -42,6 +62,12 @@ func (c *ClientConfig) check() error {
 	}
 	if c.ConIdleTime == 0 {
 		c.ConIdleTime = defaultConIdleTime
+	}
+
+	hasTlsCfg := (c.TlsCertPath != "" || c.TlsCaCertPath != "" || c.TlsKeyPath != "")
+	hasTlsEmptyCfg := (c.TlsCertPath == "" && c.TlsCaCertPath == "" && c.TlsKeyPath == "")
+	if hasTlsCfg && hasTlsEmptyCfg {
+		return errors.Wrap(ErrGodis, "invalid tls config")
 	}
 	return nil
 }
@@ -86,8 +112,7 @@ func NewClient(config *ClientConfig) (Client, error) {
 	if err := config.check(); err != nil {
 		return nil, err
 	}
-	cp := NewConnectionPool(config.Address, config.PoolMaxConns, config.MaxIdleConns,
-		config.DailTimeOut, config.ConIdleTime)
+	cp := NewConnectionPool(config.toConPoolConfig())
 	return &client{conPool: cp, newProtocol: NewProtocol, config: config}, nil
 }
 
