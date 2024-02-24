@@ -122,3 +122,7 @@ func (p *Pipeline) PSetEX(key, value string, milliseconds uint64) {
 func (p *Pipeline) Set(key string, value string, args ...arg) {
 	p.commands = append(p.commands, &stringSetCommand{key: key, value: value, args: args})
 }
+
+func (p *Pipeline) SetEX(key, value string, seconds uint64) {
+	p.commands = append(p.commands, &stringSetEXCommand{key: key, value: value, seconds: seconds})
+}

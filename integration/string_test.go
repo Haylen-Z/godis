@@ -400,3 +400,12 @@ func TestPSetEX(t *testing.T) {
 	err := client.PSetEX(ctx, "k1", "v", 100)
 	assert.Nil(t, err)
 }
+
+func TestSetEX(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+	err := client.SetEX(ctx, "k1", "v", 100)
+	assert.Nil(t, err)
+}

@@ -599,3 +599,30 @@ func (c *client) Set(ctx context.Context, key string, value string, optArgs ...a
 	}
 	return res.(bool), err
 }
+
+type stringSetEXCommand struct {
+	key     string
+	seconds uint64
+	value   string
+}
+
+func (c *stringSetEXCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	return sendReq(ctx, protocol, []string{"SETEX", c.key, strconv.FormatUint(c.seconds, 10), c.value}, nil)
+}
+
+func (c *stringSetEXCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	r, err := protocol.ReadSimpleString(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if string(r) != "OK" {
+		return nil, errors.WithStack(errUnexpectedRes)
+	}
+	return nil, nil
+}
+
+func (c *client) SetEX(ctx context.Context, key, value string, seconds uint64) error {
+	cmd := &stringSetEXCommand{key: key, value: value, seconds: seconds}
+	_, err := c.exec(ctx, cmd)
+	return err
+}
