@@ -106,6 +106,7 @@ type Client interface {
 	SetEX(ctx context.Context, key, value string, seconds uint64) error
 	SetNX(ctx context.Context, key, value string) (bool, error)
 	SetRange(ctx context.Context, key string, offset uint, value string) (uint, error)
+	StrLen(ctx context.Context, key string) (uint, error)
 }
 
 type client struct {

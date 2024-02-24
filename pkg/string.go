@@ -679,3 +679,28 @@ func (c *client) SetRange(ctx context.Context, key string, offset uint, value st
 	}
 	return res.(uint), err
 }
+
+type stringStrLenCommand struct {
+	key string
+}
+
+func (c *stringStrLenCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	return sendReq(ctx, protocol, []string{"STRLEN", c.key}, nil)
+}
+
+func (c *stringStrLenCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	r, err := protocol.ReadInteger(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return uint(r), nil
+}
+
+func (c *client) StrLen(ctx context.Context, key string) (uint, error) {
+	cmd := &stringStrLenCommand{key: key}
+	res, err := c.exec(ctx, cmd)
+	if err != nil {
+		return 0, err
+	}
+	return res.(uint), err
+}

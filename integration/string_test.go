@@ -448,3 +448,18 @@ func TestSetRange(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "ovvko", *v)
 }
+
+func TestStrLen(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+	k := "k"
+	ok, err := client.Set(ctx, k, "okkko")
+	assert.Nil(t, err)
+	assert.True(t, ok)
+
+	r, err := client.StrLen(ctx, k)
+	assert.Nil(t, err)
+	assert.Equal(t, uint(5), r)
+}

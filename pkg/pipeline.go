@@ -134,3 +134,7 @@ func (p *Pipeline) SetNX(key, value string) {
 func (p *Pipeline) SetRange(key string, offset uint, value string) {
 	p.commands = append(p.commands, &stringSetRangeCommand{key: key, value: value, offset: offset})
 }
+
+func (p *Pipeline) StrLen(key string) {
+	p.commands = append(p.commands, &stringStrLenCommand{key: key})
+}
