@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/Haylen-Z/godis/pkg"
+	"github.com/Haylen-Z/godis"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,17 +23,17 @@ func TestStringGetAndSet(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "world", string(*val))
 
-	res, err = client.Set(context.TODO(), "hello", "world2", pkg.EXArg(100), pkg.NXArg)
+	res, err = client.Set(context.TODO(), "hello", "world2", godis.EXArg(100), godis.NXArg)
 	assert.Nil(t, err)
 	assert.False(t, res)
 
-	res, err = client.Set(context.TODO(), "hello", "world2", pkg.XXArg, pkg.EXArg(100))
+	res, err = client.Set(context.TODO(), "hello", "world2", godis.XXArg, godis.EXArg(100))
 	assert.Nil(t, err)
 	assert.True(t, res)
 
-	_, err = client.Set(context.TODO(), "hello", "world2", pkg.MINMATCHLENArg(1))
+	_, err = client.Set(context.TODO(), "hello", "world2", godis.MINMATCHLENArg(1))
 	assert.NotNil(t, err)
-	assert.True(t, errors.As(err, &pkg.Error{}))
+	assert.True(t, errors.As(err, &godis.Error{}))
 }
 
 func TestConcurrent(t *testing.T) {
@@ -175,10 +175,10 @@ func TestGetEX(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "hello", *res)
 
-	_, err = client.GetEX(ctx, k, pkg.EXATArg(100))
+	_, err = client.GetEX(ctx, k, godis.EXATArg(100))
 	assert.Nil(t, err)
 
-	_, err = client.GetEX(ctx, k, pkg.PXATArg(100))
+	_, err = client.GetEX(ctx, k, godis.PXATArg(100))
 	assert.Nil(t, err)
 }
 
@@ -233,7 +233,7 @@ func TestLcs(t *testing.T) {
 	assert.Equal(t, 0, m.Pos2[0])
 	assert.Equal(t, 1, m.Pos2[1])
 
-	idx, err = client.LcsIdx(ctx, k1, k2, pkg.MINMATCHLENArg(4))
+	idx, err = client.LcsIdx(ctx, k1, k2, godis.MINMATCHLENArg(4))
 	assert.Nil(t, err)
 	assert.Equal(t, int64(6), idx.Len)
 	assert.Equal(t, 1, len(idx.Matches))
@@ -243,7 +243,7 @@ func TestLcs(t *testing.T) {
 	assert.Equal(t, 5, m.Pos2[0])
 	assert.Equal(t, 8, m.Pos2[1])
 
-	idx, err = client.LcsIdxWithMatchLen(ctx, k1, k2, pkg.MINMATCHLENArg(4))
+	idx, err = client.LcsIdxWithMatchLen(ctx, k1, k2, godis.MINMATCHLENArg(4))
 	assert.Nil(t, err)
 	assert.Equal(t, int64(6), idx.Len)
 	assert.Equal(t, 1, len(idx.Matches))

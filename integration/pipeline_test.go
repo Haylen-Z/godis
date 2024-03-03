@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Haylen-Z/godis/pkg"
+	"github.com/Haylen-Z/godis"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -96,9 +96,9 @@ func TestStringPipeline(t *testing.T) {
 	// LcsLen
 	assert.Equal(t, int64(6), popRes().(int64))
 	// LcsIdx
-	assert.Equal(t, 2, len(popRes().(pkg.LcsIdxRes).Matches))
+	assert.Equal(t, 2, len(popRes().(godis.LcsIdxRes).Matches))
 	// LcsIdxWithMatchLen
-	assert.Equal(t, 2, popRes().(pkg.LcsIdxRes).Matches[1].Len)
+	assert.Equal(t, 2, popRes().(godis.LcsIdxRes).Matches[1].Len)
 	// MSet
 	assert.Nil(t, popRes())
 	// MGet

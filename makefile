@@ -6,12 +6,11 @@ benchmark:
 	go run ./cmd/benchmark/main.go --worker 100 --loop 1000
 
 mockgen:
-	mockgen -destination ./pkg/protocol_mock.go -self_package github.com/Haylen-Z/godis/pkg -package pkg   --source ./pkg/protocol.go Protocol
-	mockgen -destination ./pkg/connection_mock.go -self_package github.com/Haylen-Z/godis/pkg -package pkg  --source ./pkg/connection.go Connection
-	mockgen -destination ./pkg/net_con_mock.go -package pkg  net Conn
+	mockgen -destination ./mocks.go  -self_package github.com/Haylen-Z/godis  -package godis  . Protocol,Connection,ConnectionPool
+	mockgen -destination ./net_mocks.go  -package godis  net Conn
 
 integration-test:
 	go test -race ./integration/...
 
 unit-test:
-	go test  -race ./pkg/...
+	go test  -race .

@@ -4,7 +4,7 @@ import (
 	"context"
 	"flag"
 
-	"github.com/Haylen-Z/godis/pkg"
+	"github.com/Haylen-Z/godis"
 )
 
 func main() {
@@ -18,7 +18,7 @@ func main() {
 		panic("invalid parameters")
 	}
 
-	cli, err := pkg.NewClient(&pkg.ClientConfig{
+	cli, err := godis.NewClient(&godis.ClientConfig{
 		Address:       "localhost:6379",
 		Tls:           true,
 		TlsCertPath:   certPath,
