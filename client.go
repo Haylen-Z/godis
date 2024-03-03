@@ -1,4 +1,4 @@
-package pkg
+package godis
 
 import (
 	"context"
@@ -28,6 +28,28 @@ type ClientConfig struct {
 	// the maxinum number of idle connections in the connection pool. Default is 0.
 	// If the value is 0, the maxinum number of idle connections is the same as the maxinum number of connections.
 	MaxIdleConns uint
+
+	// TLS
+	Tls           bool
+	TlsCertPath   string
+	TlsCaCertPath string
+	TlsKeyPath    string
+}
+
+func (c *ClientConfig) toConPoolConfig() *ConnectionPoolConfig {
+	return &ConnectionPoolConfig{
+		ConnectionConfig: ConnectionConfig{
+			Address:       c.Address,
+			DialTimeOut:   c.DailTimeOut,
+			Tls:           c.Tls,
+			TlsCertPath:   c.TlsCertPath,
+			TlsKeyPath:    c.TlsKeyPath,
+			TlsCaCertPath: c.TlsCaCertPath,
+		},
+		ConIdleTime:   c.ConIdleTime,
+		MaxConNum:     c.PoolMaxConns,
+		MaxIdleConNum: c.MaxIdleConns,
+	}
 }
 
 func (c *ClientConfig) check() error {
@@ -43,6 +65,11 @@ func (c *ClientConfig) check() error {
 	if c.ConIdleTime == 0 {
 		c.ConIdleTime = defaultConIdleTime
 	}
+
+	hasTlsEmptyCfg := (c.TlsCertPath == "" && c.TlsCaCertPath == "" && c.TlsKeyPath == "")
+	if c.Tls && hasTlsEmptyCfg {
+		return errors.Wrap(ErrGodis, "invalid tls config")
+	}
 	return nil
 }
 
@@ -56,24 +83,31 @@ type Client interface {
 	Pipeline() *Pipeline
 
 	// String
-	Append(ctx context.Context, key string, value []byte) (int64, error)
+	Append(ctx context.Context, key string, value string) (int64, error)
 	Decr(ctx context.Context, key string) (int64, error)
 	DecrBy(ctx context.Context, key string, decrement int64) (int64, error)
-	Get(ctx context.Context, key string) (*[]byte, error)
-	GetDel(ctx context.Context, key string) (*[]byte, error)
-	GetEX(ctx context.Context, key string, args ...arg) (*[]byte, error)
-	GetRange(ctx context.Context, key string, start int64, end int64) ([]byte, error)
-	GetSet(ctx context.Context, key string, value []byte) (*[]byte, error)
+	Get(ctx context.Context, key string) (*string, error)
+	GetDel(ctx context.Context, key string) (*string, error)
+	GetEX(ctx context.Context, key string, args ...arg) (*string, error)
+	GetRange(ctx context.Context, key string, start int64, end int64) (string, error)
+	GetSet(ctx context.Context, key string, value string) (*string, error)
 	Incr(ctx context.Context, key string) (int64, error)
 	IncrBy(ctx context.Context, key string, increment int64) (int64, error)
 	IncrByFloat(ctx context.Context, key string, increment float64) (float64, error)
-	MGet(ctx context.Context, keys ...string) ([]*[]byte, error)
-	Lcs(ctx context.Context, key1 string, key2 string, args ...arg) ([]byte, error)
-	MSet(ctx context.Context, kvs map[string][]byte) error
+	MGet(ctx context.Context, keys ...string) ([]*string, error)
+	MSet(ctx context.Context, kvs map[string]string) error
+	MSetNX(ctx context.Context, kvs map[string]string) (bool, error)
+	PSetEX(ctx context.Context, key, value string, milliseconds uint64) error
+	Lcs(ctx context.Context, key1 string, key2 string, args ...arg) (string, error)
 	LcsLen(ctx context.Context, key1 string, key2 string) (int64, error)
 	LcsIdx(ctx context.Context, key1 string, key2 string, args ...arg) (LcsIdxRes, error)
 	LcsIdxWithMatchLen(ctx context.Context, key1 string, key2 string, args ...arg) (LcsIdxRes, error)
-	Set(ctx context.Context, key string, value []byte, args ...arg) (bool, error)
+	Set(ctx context.Context, key string, value string, args ...arg) (bool, error)
+	SetEX(ctx context.Context, key, value string, seconds uint64) error
+	SetNX(ctx context.Context, key, value string) (bool, error)
+	SetRange(ctx context.Context, key string, offset uint, value string) (uint, error)
+	StrLen(ctx context.Context, key string) (uint, error)
+	SubStr(ctx context.Context, key string, start, end int) (string, error)
 }
 
 type client struct {
@@ -86,8 +120,7 @@ func NewClient(config *ClientConfig) (Client, error) {
 	if err := config.check(); err != nil {
 		return nil, err
 	}
-	cp := NewConnectionPool(config.Address, config.PoolMaxConns, config.MaxIdleConns,
-		config.DailTimeOut, config.ConIdleTime)
+	cp := NewConnectionPool(config.toConPoolConfig())
 	return &client{conPool: cp, newProtocol: NewProtocol, config: config}, nil
 }
 
@@ -107,7 +140,7 @@ func (c *client) exec(ctx context.Context, cmd Command) (res interface{}, err er
 		}
 		err1 := c.conPool.Release(con)
 		if err1 != nil {
-			log.Println(err)
+			log.Println(err1)
 		}
 	}()
 	protocol := c.newProtocol(con)
@@ -183,54 +216,35 @@ func stringsToBytes(strs []string) [][]byte {
 	return res
 }
 
-func getArgs(args []arg) [][]byte {
-	var res []string
-	for _, arg := range args {
-		res = append(res, arg()...)
+func sendReq(ctx context.Context, protocol Protocol, strArgs []string, args []arg) error {
+	strs := make([]string, 0, len(strArgs))
+	strs = append(strs, strArgs...)
+	for _, a := range args {
+		strs = append(strs, a()...)
 	}
-	return stringsToBytes(res)
+	return protocol.WriteBulkStringArray(ctx, stringsToBytes(strs))
 }
 
-func sendReqWithKey(ctx context.Context, protocol Protocol, cmd string, key string, args []arg) error {
-	data := [][]byte{
-		[]byte(cmd),
-		[]byte(key),
-	}
-	data = append(data, getArgs(args)...)
-	return protocol.WriteBulkStringArray(ctx, data)
-}
-
-func sendReqWithKeyValue(ctx context.Context, protocol Protocol, cmd string, key string, value []byte, args []arg) error {
-	data := [][]byte{
-		[]byte(cmd),
-		[]byte(key),
-		value,
-	}
-	data = append(data, getArgs(args)...)
-	return protocol.WriteBulkStringArray(ctx, data)
-}
-
-func sendReqWithKeys(ctx context.Context, protocol Protocol, cmd string, keys []string, args ...arg) error {
-	data := [][]byte{
-		[]byte(cmd),
-	}
-	data = append(data, stringsToBytes(keys)...)
-	data = append(data, getArgs(args)...)
-	return protocol.WriteBulkStringArray(ctx, data)
-}
-
-func readRespStringOrNil(ctx context.Context, protocol Protocol) (*[]byte, error) {
+func readRespStringOrNil(ctx context.Context, protocol Protocol) (*string, error) {
 	msgType, err := protocol.GetNextMsgType(ctx)
 	if err != nil {
 		return nil, err
 	}
 	switch msgType {
 	case BulkStringType:
-		return protocol.ReadBulkString(ctx)
+		r, err := protocol.ReadBulkString(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if r == nil {
+			return nil, nil
+		}
+		s := string(*r)
+		return &s, nil
 	case NullType:
 		err := protocol.ReadNull(ctx)
-		return (*[]byte)(nil), err
+		return (*string)(nil), err
 	default:
-		return (*[]byte)(nil), errors.WithStack(errUnexpectedRes)
+		return (*string)(nil), errors.WithStack(errUnexpectedRes)
 	}
 }

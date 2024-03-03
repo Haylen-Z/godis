@@ -1,4 +1,4 @@
-package pkg
+package godis
 
 import (
 	"context"
@@ -88,9 +88,12 @@ func TestConnectionWriteWithDeadline(t *testing.T) {
 
 func getMockConnectionPool(ctrl *gomock.Controller) *connectionPool {
 	var cp *connectionPool = &connectionPool{
-		address:   "1.0.0.1",
-		MaxConNum: 10,
-		newConnection: func(address string) Connection {
+		config: &ConnectionPoolConfig{
+			ConnectionConfig: ConnectionConfig{Address: "1.0.0.1"},
+			MaxConNum:        10,
+			ConIdleTime:      defaultConIdleTime,
+		},
+		newConnection: func(cfg *ConnectionConfig) Connection {
 			c := NewMockConnection(ctrl)
 			c.EXPECT().Connect().Return(nil).Times(1)
 			c.EXPECT().Close().Return(nil).Times(1)
@@ -98,8 +101,8 @@ func getMockConnectionPool(ctrl *gomock.Controller) *connectionPool {
 			c.EXPECT().IsBroken().Return(false).AnyTimes()
 			return c
 		},
-		mutex:       &sync.Mutex{},
-		conIdleTime: defaultConIdleTime, conCloseChan: make(chan Connection),
+		mutex:        &sync.Mutex{},
+		conCloseChan: make(chan Connection),
 	}
 	cp.startCloseConWorker()
 	return cp
@@ -126,7 +129,7 @@ func TestConnection(t *testing.T) {
 
 	// Pool is full
 	cons := []Connection{}
-	for i := uint(0); i < cp.MaxConNum; i++ {
+	for i := uint(0); i < cp.config.MaxConNum; i++ {
 		conn, err = cp.GetConnection()
 		assert.Nil(t, err)
 		cons = append(cons, conn)
@@ -170,7 +173,7 @@ func TestNewConnectionWhenNoHealthyConnectionInPool(t *testing.T) {
 	defer ctrl.Finish()
 
 	cp := getMockConnectionPool(ctrl)
-	cp.newConnection = func(address string) Connection {
+	cp.newConnection = func(cfg *ConnectionConfig) Connection {
 		c := NewMockConnection(ctrl)
 		c.EXPECT().Connect().Return(nil).Times(1)
 		c.EXPECT().Close().Return(nil).Times(1)
@@ -203,7 +206,7 @@ func TestReleaseBrokenConnectin(t *testing.T) {
 	defer ctrl.Finish()
 
 	cp := getMockConnectionPool(ctrl)
-	cp.newConnection = func(address string) Connection {
+	cp.newConnection = func(cfg *ConnectionConfig) Connection {
 		c := NewMockConnection(ctrl)
 		c.EXPECT().Connect().Return(nil).Times(1)
 		c.EXPECT().Close().Return(nil).Times(1)

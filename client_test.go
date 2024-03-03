@@ -1,4 +1,4 @@
-package pkg
+package godis
 
 import (
 	"context"
@@ -49,7 +49,7 @@ func TestPipeline(t *testing.T) {
 	mkProtocol.EXPECT().ReadBulkString(ctx).Return(&val, nil).Times(1)
 
 	pipeline := testClient.Pipeline()
-	pipeline.Set(string(key), val)
+	pipeline.Set(string(key), string(val))
 	pipeline.Get(string(key))
 	res, err := pipeline.Exec(ctx)
 	assert.Nil(t, err)
@@ -59,5 +59,5 @@ func TestPipeline(t *testing.T) {
 	assert.True(t, res[0].(bool))
 
 	// Get result
-	assert.Equal(t, val, *res[1].(*[]byte))
+	assert.Equal(t, string(val), *res[1].(*string))
 }

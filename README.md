@@ -6,50 +6,27 @@ A Redis client for Go.
 
 ```golang
 import (
-    "github.com/Haylen-Z/godis/pkg"
-    "fmt"
+    "github.com/Haylen-Z/godis"
 )
 
-client, err = pkg.NewClient(&pkg.ClientConfig{Address: "127.0.0.1:6379"})
-if err != nil {
-	panic(err)
-}
+client, err := godis.NewClient(&godis.ClientConfig{Address: "127.0.0.1:6379"})
 defer client.Close()
 ctx := context.Background()
 
 key := "key1"
 val : "hh1"
-ok, err := client.Set(ctx, key, []byte(val), pkg.NXArg)
-if err != nil {
-	panic(err)
-}
-if !ok {
-    fmt.Println("Key aleady exists")
-}
-
+ok, err := client.Set(ctx, key, val, godis.NXArg)
 r, err := client.Get(ctx, key)
-if err != nil {
-    panic(err)
-}
-if r == nil {
-    fmt.Println("Key not exists")
-}
-fmt.Println(strint(*r))
-
 ```
 
 ### Pipeline
 ```golang
     pipe := client.Pipeline()
-    pipe.Set(key, []byte(val),  pkg.NXArg)
+    pipe.Set(key, []byte(val),  godis.NXArg)
     pipe.Get(key)
     rs, err := pipe.Exec(ct)
-    if err != nil {
-        panic(err)
-    }
-    if !rs[0].(bool) {
-        fmt.Println("Key aleady exists")
-    }
-    v := res[1].(*[]byte)
-    fmt.Println(string(*v))
+    // Set return
+    setOk := res[0].(bool)
+    // Get return
+    val := res[1].(*string)
 ```

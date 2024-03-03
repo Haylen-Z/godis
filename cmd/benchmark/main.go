@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Haylen-Z/godis/pkg"
+	"github.com/Haylen-Z/godis"
 )
 
 func main() {
@@ -18,7 +18,7 @@ func main() {
 	flag.IntVar(&loop, "loop", 100, "loop number")
 	flag.Parse()
 
-	cli, err := pkg.NewClient(&pkg.ClientConfig{Address: "127.0.0.1:6379"})
+	cli, err := godis.NewClient(&godis.ClientConfig{Address: "127.0.0.1:6379"})
 	if err != nil {
 		panic(err)
 	}
@@ -37,11 +37,11 @@ func main() {
 	fmt.Printf("total time: %d ms\n", time.Since(startTime).Milliseconds())
 }
 
-func exec(cli pkg.Client, loop int) {
+func exec(cli godis.Client, loop int) {
 	for i := 0; i < loop; i++ {
 		key := "k" + strconv.Itoa(i)
 		v := "value" + strconv.Itoa(i)
-		_, err := cli.Set(context.TODO(), key, []byte(v), pkg.NXArg, pkg.EXArg(10))
+		_, err := cli.Set(context.TODO(), key, v, godis.NXArg, godis.EXArg(10))
 		if err != nil {
 			panic(err)
 		}

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/Haylen-Z/godis/pkg"
+	"github.com/Haylen-Z/godis"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,7 +15,7 @@ func TestStringGetAndSet(t *testing.T) {
 	setupClient()
 	defer teardownClient()
 
-	res, err := client.Set(context.TODO(), "hello", []byte("world"))
+	res, err := client.Set(context.TODO(), "hello", "world")
 	assert.Nil(t, err)
 	assert.True(t, res)
 
@@ -23,17 +23,17 @@ func TestStringGetAndSet(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "world", string(*val))
 
-	res, err = client.Set(context.TODO(), "hello", []byte("world2"), pkg.EXArg(100), pkg.NXArg)
+	res, err = client.Set(context.TODO(), "hello", "world2", godis.EXArg(100), godis.NXArg)
 	assert.Nil(t, err)
 	assert.False(t, res)
 
-	res, err = client.Set(context.TODO(), "hello", []byte("world2"), pkg.XXArg, pkg.EXArg(100))
+	res, err = client.Set(context.TODO(), "hello", "world2", godis.XXArg, godis.EXArg(100))
 	assert.Nil(t, err)
 	assert.True(t, res)
 
-	_, err = client.Set(context.TODO(), "hello", []byte("world2"), pkg.MINMATCHLENArg(1))
+	_, err = client.Set(context.TODO(), "hello", "world2", godis.MINMATCHLENArg(1))
 	assert.NotNil(t, err)
-	assert.True(t, errors.As(err, &pkg.Error{}))
+	assert.True(t, errors.As(err, &godis.Error{}))
 }
 
 func TestConcurrent(t *testing.T) {
@@ -48,7 +48,7 @@ func TestConcurrent(t *testing.T) {
 			key := "hello" + strconv.Itoa(idx)
 			val := "world" + strconv.Itoa(idx)
 
-			res, err := client.Set(context.TODO(), key, []byte(val))
+			res, err := client.Set(context.TODO(), key, val)
 			assert.Nil(t, err)
 			assert.True(t, res)
 
@@ -68,14 +68,14 @@ func TestStringAppend(t *testing.T) {
 	k := "kk"
 	ctx := context.TODO()
 
-	_, err := client.Set(ctx, k, []byte("iii"))
+	_, err := client.Set(ctx, k, "iii")
 	assert.Nil(t, err)
 
-	res, err := client.Append(ctx, k, []byte("iii"))
+	res, err := client.Append(ctx, k, "iii")
 	assert.Nil(t, err)
 	assert.Equal(t, int64(6), res)
 
-	res, err = client.Append(ctx, k, []byte("wwwww"))
+	res, err = client.Append(ctx, k, "wwwww")
 	assert.Nil(t, err)
 	assert.Equal(t, int64(11), res)
 
@@ -83,7 +83,7 @@ func TestStringAppend(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "iiiiiiwwwww", string(*val))
 
-	res, err = client.Append(ctx, k, []byte{})
+	res, err = client.Append(ctx, k, "")
 	assert.Nil(t, err)
 	assert.Equal(t, int64(11), res)
 	val, err = client.Get(ctx, k)
@@ -98,14 +98,14 @@ func TestStringDecr(t *testing.T) {
 	k := "kk"
 	ctx := context.TODO()
 
-	_, err := client.Set(ctx, k, []byte("0"))
+	_, err := client.Set(ctx, k, "0")
 	assert.Nil(t, err)
 
 	res, err := client.Decr(ctx, k)
 	assert.Nil(t, err)
 	assert.Equal(t, int64(-1), res)
 
-	_, err = client.Set(ctx, k, []byte("100"))
+	_, err = client.Set(ctx, k, "100")
 	assert.Nil(t, err)
 	for i := 0; i < 10; i++ {
 		res, err = client.Decr(ctx, k)
@@ -121,7 +121,7 @@ func TestStringDecrBy(t *testing.T) {
 	k := "kk"
 	ctx := context.TODO()
 
-	_, err := client.Set(ctx, k, []byte("0"))
+	_, err := client.Set(ctx, k, "0")
 	assert.Nil(t, err)
 
 	res, err := client.DecrBy(ctx, k, 2)
@@ -145,16 +145,16 @@ func TestStringGetAndDel(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Nil(t, res)
 
-	_, err = client.Set(ctx, k, []byte("hello"))
+	_, err = client.Set(ctx, k, "hello")
 	assert.Nil(t, err)
 
 	res, err = client.GetDel(ctx, k)
 	assert.Nil(t, err)
-	assert.Equal(t, "hello", string(*res))
+	assert.Equal(t, "hello", *res)
 
-	res, err = client.Get(ctx, k)
+	res1, err := client.Get(ctx, k)
 	assert.Nil(t, err)
-	assert.Nil(t, res)
+	assert.Nil(t, res1)
 }
 
 func TestGetEX(t *testing.T) {
@@ -168,17 +168,17 @@ func TestGetEX(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Nil(t, res)
 
-	_, err = client.Set(ctx, k, []byte("hello"))
+	_, err = client.Set(ctx, k, "hello")
 	assert.Nil(t, err)
 
 	res, err = client.GetEX(ctx, k)
 	assert.Nil(t, err)
-	assert.Equal(t, "hello", string(*res))
+	assert.Equal(t, "hello", *res)
 
-	_, err = client.GetEX(ctx, k, pkg.EXATArg(100))
+	_, err = client.GetEX(ctx, k, godis.EXATArg(100))
 	assert.Nil(t, err)
 
-	_, err = client.GetEX(ctx, k, pkg.PXATArg(100))
+	_, err = client.GetEX(ctx, k, godis.PXATArg(100))
 	assert.Nil(t, err)
 }
 
@@ -188,16 +188,16 @@ func TestMGet(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err := client.Set(ctx, "k1", []byte("v1"))
+	_, err := client.Set(ctx, "k1", "v1")
 	assert.Nil(t, err)
-	_, err = client.Set(ctx, "k2", []byte("v2"))
+	_, err = client.Set(ctx, "k2", "v2")
 	assert.Nil(t, err)
 
 	res, err := client.MGet(ctx, "k1", "k2", "k34322432g")
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(res))
-	assert.Equal(t, "v1", string(*res[0]))
-	assert.Equal(t, "v2", string(*res[1]))
+	assert.Equal(t, "v1", *res[0])
+	assert.Equal(t, "v2", *res[1])
 	assert.Nil(t, res[2])
 }
 
@@ -208,16 +208,16 @@ func TestLcs(t *testing.T) {
 	ctx := context.Background()
 
 	k1 := "key1"
-	_, err := client.Set(ctx, k1, []byte("ohmytext"))
+	_, err := client.Set(ctx, k1, "ohmytext")
 	assert.Nil(t, err)
 
 	k2 := "key2"
-	_, err = client.Set(ctx, k2, []byte("mynewtext"))
+	_, err = client.Set(ctx, k2, "mynewtext")
 	assert.Nil(t, err)
 
 	res, err := client.Lcs(ctx, k1, k2)
 	assert.Nil(t, err)
-	assert.Equal(t, "mytext", string(res))
+	assert.Equal(t, "mytext", res)
 
 	l, err := client.LcsLen(ctx, k1, k2)
 	assert.Nil(t, err)
@@ -233,7 +233,7 @@ func TestLcs(t *testing.T) {
 	assert.Equal(t, 0, m.Pos2[0])
 	assert.Equal(t, 1, m.Pos2[1])
 
-	idx, err = client.LcsIdx(ctx, k1, k2, pkg.MINMATCHLENArg(4))
+	idx, err = client.LcsIdx(ctx, k1, k2, godis.MINMATCHLENArg(4))
 	assert.Nil(t, err)
 	assert.Equal(t, int64(6), idx.Len)
 	assert.Equal(t, 1, len(idx.Matches))
@@ -243,7 +243,7 @@ func TestLcs(t *testing.T) {
 	assert.Equal(t, 5, m.Pos2[0])
 	assert.Equal(t, 8, m.Pos2[1])
 
-	idx, err = client.LcsIdxWithMatchLen(ctx, k1, k2, pkg.MINMATCHLENArg(4))
+	idx, err = client.LcsIdxWithMatchLen(ctx, k1, k2, godis.MINMATCHLENArg(4))
 	assert.Nil(t, err)
 	assert.Equal(t, int64(6), idx.Len)
 	assert.Equal(t, 1, len(idx.Matches))
@@ -262,16 +262,16 @@ func TestGetRange(t *testing.T) {
 	ctx := context.Background()
 
 	k := "kgetrange"
-	_, err := client.Set(ctx, k, []byte("hello"))
+	_, err := client.Set(ctx, k, "hello")
 	assert.Nil(t, err)
 
 	res, err := client.GetRange(ctx, k, 0, 3)
 	assert.Nil(t, err)
-	assert.Equal(t, "hell", string(res))
+	assert.Equal(t, "hell", res)
 
 	res, err = client.GetRange(ctx, k, 2, -1)
 	assert.Nil(t, err)
-	assert.Equal(t, "llo", string(res))
+	assert.Equal(t, "llo", res)
 }
 
 func TestGetSet(t *testing.T) {
@@ -281,16 +281,16 @@ func TestGetSet(t *testing.T) {
 	ctx := context.Background()
 
 	k := "kgetset"
-	_, err := client.Set(ctx, k, []byte("hello"))
+	_, err := client.Set(ctx, k, "hello")
 	assert.Nil(t, err)
 
-	res, err := client.GetSet(ctx, k, []byte("world"))
+	res, err := client.GetSet(ctx, k, "world")
 	assert.Nil(t, err)
-	assert.Equal(t, "hello", string(*res))
+	assert.Equal(t, "hello", *res)
 
-	res, err = client.Get(ctx, k)
+	res1, err := client.Get(ctx, k)
 	assert.Nil(t, err)
-	assert.Equal(t, "world", string(*res))
+	assert.Equal(t, "world", *res1)
 }
 
 func TestIncr(t *testing.T) {
@@ -300,7 +300,7 @@ func TestIncr(t *testing.T) {
 	ctx := context.Background()
 
 	k := "kincr"
-	_, err := client.Set(ctx, k, []byte("0"))
+	_, err := client.Set(ctx, k, "0")
 	assert.Nil(t, err)
 
 	res, err := client.Incr(ctx, k)
@@ -315,7 +315,7 @@ func TestIncrBy(t *testing.T) {
 	ctx := context.Background()
 
 	k := "kincrby"
-	_, err := client.Set(ctx, k, []byte("0"))
+	_, err := client.Set(ctx, k, "0")
 	assert.Nil(t, err)
 
 	res, err := client.IncrBy(ctx, k, 2)
@@ -350,10 +350,10 @@ func TestMSet(t *testing.T) {
 
 	ctx := context.Background()
 
-	kvs := map[string][]byte{
-		"k1": []byte("v1"),
-		"k2": []byte("v2"),
-		"k3": []byte("v3"),
+	kvs := map[string]string{
+		"k1": "v1",
+		"k2": "v2",
+		"k3": "v3",
 	}
 	err := client.MSet(ctx, kvs)
 	assert.Nil(t, err)
@@ -361,7 +361,128 @@ func TestMSet(t *testing.T) {
 	res, err := client.MGet(ctx, "k1", "k2", "k3")
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(res))
-	assert.Equal(t, "v1", string(*res[0]))
-	assert.Equal(t, "v2", string(*res[1]))
-	assert.Equal(t, "v3", string(*res[2]))
+	assert.Equal(t, "v1", *res[0])
+	assert.Equal(t, "v2", *res[1])
+	assert.Equal(t, "v3", *res[2])
+}
+
+func TestMSetNx(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+
+	kvs := map[string]string{
+		"k1": "v1",
+		"k2": "v2",
+		"k3": "v3",
+	}
+
+	// TODO: Implement DELETE command to make this work
+	// ok, err := client.MSetNX(ctx, kvs)
+	// assert.Nil(t, err)
+	// assert.True(t, ok)
+
+	ok, err := client.MSetNX(ctx, kvs)
+	assert.Nil(t, err)
+	assert.False(t, ok)
+
+	// v, err := client.Get(ctx, "k1")
+	// assert.Nil(t, err)
+	// assert.Equal(t, kvs["k1"], *v)
+}
+
+func TestPSetEX(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+	err := client.PSetEX(ctx, "k1", "v", 100)
+	assert.Nil(t, err)
+}
+
+func TestSetEX(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+	err := client.SetEX(ctx, "k1", "v", 100)
+	assert.Nil(t, err)
+}
+
+func TestSetNx(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+
+	// TODO: Implement DELETE command to make this work
+	// ok, err := client.SetNX(ctx, "k", "v")
+	// assert.Nil(t, err)
+	// assert.True(t, ok)
+
+	ok, err := client.SetNX(ctx, "k", "v")
+	assert.Nil(t, err)
+	assert.False(t, ok)
+
+	// v, err := client.Get(ctx, "k1")
+	// assert.Nil(t, err)
+	// assert.Equal(t, kvs["k1"], *v)
+}
+
+func TestSetRange(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+	k := "k"
+	ok, err := client.Set(ctx, k, "okkko")
+	assert.Nil(t, err)
+	assert.True(t, ok)
+
+	r, err := client.SetRange(ctx, k, 1, "vv")
+	assert.Nil(t, err)
+	assert.Equal(t, uint(5), r)
+
+	v, err := client.Get(ctx, k)
+	assert.Nil(t, err)
+	assert.Equal(t, "ovvko", *v)
+}
+
+func TestStrLen(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+	k := "k"
+	ok, err := client.Set(ctx, k, "okkko")
+	assert.Nil(t, err)
+	assert.True(t, ok)
+
+	r, err := client.StrLen(ctx, k)
+	assert.Nil(t, err)
+	assert.Equal(t, uint(5), r)
+}
+
+func TestSubStr(t *testing.T) {
+	setupClient()
+	defer teardownClient()
+
+	ctx := context.Background()
+	k := "subk"
+	ok, err := client.Set(ctx, k, "okkko")
+	assert.Nil(t, err)
+	assert.True(t, ok)
+
+	r, err := client.SubStr(ctx, k, 2, 5)
+	assert.Nil(t, err)
+	assert.Equal(t, "kko", r)
+
+	r, err = client.SubStr(ctx, k, 21, 25)
+	assert.Nil(t, err)
+	assert.Equal(t, "", r)
+
+	r, err = client.SubStr(ctx, "kkk000000sub", 0, 1)
+	assert.Nil(t, err)
+	assert.Equal(t, "", r)
 }

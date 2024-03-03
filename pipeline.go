@@ -1,4 +1,4 @@
-package pkg
+package godis
 
 import "context"
 
@@ -43,7 +43,7 @@ func (c *client) Pipeline() *Pipeline {
 
 // String commands
 
-func (p *Pipeline) Append(key string, value []byte) {
+func (p *Pipeline) Append(key string, value string) {
 	p.commands = append(p.commands, &stringAppendCommand{key: key, value: value})
 }
 
@@ -87,7 +87,7 @@ func (p *Pipeline) GetRange(key string, start int64, end int64) {
 	p.commands = append(p.commands, &stringGetRangeCommand{key: key, start: start, end: end})
 }
 
-func (p *Pipeline) GetSet(key string, value []byte) {
+func (p *Pipeline) GetSet(key string, value string) {
 	p.commands = append(p.commands, &stringGetSetCommand{key: key, value: value})
 }
 
@@ -107,10 +107,38 @@ func (p *Pipeline) MGet(keys ...string) {
 	p.commands = append(p.commands, &stringMGetCommand{keys: keys})
 }
 
-func (p *Pipeline) MSet(kvs map[string][]byte) {
+func (p *Pipeline) MSet(kvs map[string]string) {
 	p.commands = append(p.commands, &stringMSetCommand{kvs: kvs})
 }
 
-func (p *Pipeline) Set(key string, value []byte, args ...arg) {
+func (p *Pipeline) MSetNX(kvs map[string]string) {
+	p.commands = append(p.commands, &stringMSetNxCommand{kvs: kvs})
+}
+
+func (p *Pipeline) PSetEX(key, value string, milliseconds uint64) {
+	p.commands = append(p.commands, &stringPSetEXCommand{key: key, value: value, milliseconds: milliseconds})
+}
+
+func (p *Pipeline) Set(key string, value string, args ...arg) {
 	p.commands = append(p.commands, &stringSetCommand{key: key, value: value, args: args})
+}
+
+func (p *Pipeline) SetEX(key, value string, seconds uint64) {
+	p.commands = append(p.commands, &stringSetEXCommand{key: key, value: value, seconds: seconds})
+}
+
+func (p *Pipeline) SetNX(key, value string) {
+	p.commands = append(p.commands, &stringSetNXCommand{key: key, value: value})
+}
+
+func (p *Pipeline) SetRange(key string, offset uint, value string) {
+	p.commands = append(p.commands, &stringSetRangeCommand{key: key, value: value, offset: offset})
+}
+
+func (p *Pipeline) StrLen(key string) {
+	p.commands = append(p.commands, &stringStrLenCommand{key: key})
+}
+
+func (p *Pipeline) SubStr(key string, start, end int) {
+	p.commands = append(p.commands, &stringSubStrCommand{key: key, start: start, end: end})
 }
