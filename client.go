@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"log"
-	"strconv"
 
 	"github.com/pkg/errors"
 )
@@ -81,6 +80,9 @@ type Command interface {
 type Client interface {
 	Close() error
 	Pipeline() *Pipeline
+
+	// Generic
+	Copy(ctx context.Context, source, dest string, args ...arg) (bool, error)
 
 	// String
 	Append(ctx context.Context, key string, value string) (int64, error)
@@ -165,48 +167,6 @@ func (c *client) exec(ctx context.Context, cmd Command) (res interface{}, err er
 }
 
 type arg func() []string
-
-var NXArg arg = func() []string {
-	return []string{"NX"}
-}
-
-var XXArg arg = func() []string {
-	return []string{"XX"}
-}
-
-func EXArg(seconds uint64) arg {
-	return func() []string {
-		return []string{"EX", strconv.FormatUint(seconds, 10)}
-	}
-}
-
-func PXArg(miliseconds uint64) arg {
-	return func() []string {
-		return []string{"PX", strconv.FormatUint(miliseconds, 10)}
-	}
-}
-
-func EXATArg(unixTimeSeconds uint64) arg {
-	return func() []string {
-		return []string{"EXAT", strconv.FormatUint(unixTimeSeconds, 10)}
-	}
-}
-
-func PXATArg(unixTimeMiliseconds uint64) arg {
-	return func() []string {
-		return []string{"PXAT", strconv.FormatUint(unixTimeMiliseconds, 10)}
-	}
-}
-
-var PERSISTArg arg = func() []string {
-	return []string{"PERSIST"}
-}
-
-func MINMATCHLENArg(l uint64) arg {
-	return func() []string {
-		return []string{"MINMATCHLEN", strconv.FormatUint(l, 10)}
-	}
-}
 
 func stringsToBytes(strs []string) [][]byte {
 	var res [][]byte

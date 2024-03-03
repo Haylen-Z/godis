@@ -7,6 +7,48 @@ import (
 	"github.com/pkg/errors"
 )
 
+var NXArg arg = func() []string {
+	return []string{"NX"}
+}
+
+var XXArg arg = func() []string {
+	return []string{"XX"}
+}
+
+func EXArg(seconds uint64) arg {
+	return func() []string {
+		return []string{"EX", strconv.FormatUint(seconds, 10)}
+	}
+}
+
+func PXArg(miliseconds uint64) arg {
+	return func() []string {
+		return []string{"PX", strconv.FormatUint(miliseconds, 10)}
+	}
+}
+
+func EXATArg(unixTimeSeconds uint64) arg {
+	return func() []string {
+		return []string{"EXAT", strconv.FormatUint(unixTimeSeconds, 10)}
+	}
+}
+
+func PXATArg(unixTimeMiliseconds uint64) arg {
+	return func() []string {
+		return []string{"PXAT", strconv.FormatUint(unixTimeMiliseconds, 10)}
+	}
+}
+
+var PERSISTArg arg = func() []string {
+	return []string{"PERSIST"}
+}
+
+func MINMATCHLENArg(l uint64) arg {
+	return func() []string {
+		return []string{"MINMATCHLEN", strconv.FormatUint(l, 10)}
+	}
+}
+
 type stringAppendCommand struct {
 	key   string
 	value string
@@ -148,7 +190,7 @@ func (c *stringMGetCommand) SendReq(ctx context.Context, protocol Protocol) erro
 func (c *stringMGetCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
 	arr, err := protocol.ReadArray(ctx)
 	if err != nil {
-		return nil, err
+		return ([]*string)(nil), err
 	}
 	res := make([]*string, 0, len(arr))
 	for _, item := range arr {
@@ -691,7 +733,7 @@ func (c *stringStrLenCommand) SendReq(ctx context.Context, protocol Protocol) er
 func (c *stringStrLenCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
 	r, err := protocol.ReadInteger(ctx)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	return uint(r), nil
 }

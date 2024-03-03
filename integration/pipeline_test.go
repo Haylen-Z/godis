@@ -1,4 +1,4 @@
-package e2e
+package integration
 
 import (
 	"context"
@@ -8,11 +8,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestStringPipeline(t *testing.T) {
+func runPiplelineTest(
+	t *testing.T,
+	test func(t *testing.T, client godis.Client, pipeline *godis.Pipeline),
+) {
 	setupClient()
 	defer teardownClient()
+	test(t, client, client.Pipeline())
+}
 
-	pipeline := client.Pipeline()
+func TestStringPipeline(t *testing.T) { runPiplelineTest(t, testStringPipeline) }
+func testStringPipeline(t *testing.T, client godis.Client, pipeline *godis.Pipeline) {
 	ctx := context.Background()
 
 	key := "kstringpipeline"
@@ -119,4 +125,28 @@ func TestStringPipeline(t *testing.T) {
 	assert.Equal(t, uint(4), popRes().(uint))
 	// SubStr
 	assert.Equal(t, "sv", popRes().(string))
+}
+
+func TestGenericPipeline(t *testing.T) { runPiplelineTest(t, testGenericPipeline) }
+func testGenericPipeline(t *testing.T, client godis.Client, pipeline *godis.Pipeline) {
+	ctx := context.Background()
+
+	ok, err := client.Set(ctx, "k1", "v1")
+	assert.Nil(t, err)
+	assert.True(t, ok)
+
+	pipeline.Copy("k1", "k2", godis.REPLACEArg)
+
+	res, err := pipeline.Exec(ctx)
+	assert.Nil(t, err)
+
+	popRes := func() interface{} {
+		r := res[0]
+		res = res[1:]
+		return r
+	}
+
+	// COPY
+	assert.True(t, popRes().(bool))
+
 }

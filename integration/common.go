@@ -1,6 +1,10 @@
-package e2e
+package integration
 
-import "github.com/Haylen-Z/godis"
+import (
+	"testing"
+
+	"github.com/Haylen-Z/godis"
+)
 
 var client godis.Client
 
@@ -17,4 +21,10 @@ func teardownClient() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func Run(t *testing.T, test func(*testing.T, godis.Client)) {
+	setupClient()
+	defer teardownClient()
+	test(t, client)
 }

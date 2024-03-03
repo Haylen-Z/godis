@@ -8,6 +8,9 @@ type Pipeline struct {
 }
 
 func (p *Pipeline) Exec(ctx context.Context) ([]interface{}, error) {
+	if len(p.commands) == 0 {
+		return nil, nil
+	}
 	r, err := p.client.exec(ctx, p)
 	if err != nil {
 		return nil, err
@@ -30,7 +33,7 @@ func (p *Pipeline) ReadResp(ctx context.Context, protocol Protocol) (interface{}
 	for _, cmd := range p.commands {
 		r, err := cmd.ReadResp(ctx, protocol)
 		if err != nil {
-			return nil, err
+			return res, err
 		}
 		res = append(res, r)
 	}
@@ -41,7 +44,13 @@ func (c *client) Pipeline() *Pipeline {
 	return &Pipeline{client: c}
 }
 
-// String commands
+// Generic
+
+func (p *Pipeline) Copy(source, dest string, args ...arg) {
+	p.commands = append(p.commands, &copyCommand{source: source, dest: dest, args: args})
+}
+
+// String
 
 func (p *Pipeline) Append(key string, value string) {
 	p.commands = append(p.commands, &stringAppendCommand{key: key, value: value})
