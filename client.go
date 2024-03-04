@@ -83,6 +83,7 @@ type Client interface {
 
 	// Generic
 	Copy(ctx context.Context, source, dest string, args ...arg) (bool, error)
+	Del(ctx context.Context, keys ...string) (int64, error)
 
 	// String
 	Append(ctx context.Context, key string, value string) (int64, error)

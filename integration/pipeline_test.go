@@ -10,17 +10,15 @@ import (
 
 func runPiplelineTest(
 	t *testing.T,
-	test func(t *testing.T, client godis.Client, pipeline *godis.Pipeline),
+	test func(*testing.T, godis.Client, *godis.Pipeline, context.Context),
 ) {
 	setupClient()
 	defer teardownClient()
-	test(t, client, client.Pipeline())
+	test(t, client, client.Pipeline(), context.Background())
 }
 
 func TestStringPipeline(t *testing.T) { runPiplelineTest(t, testStringPipeline) }
-func testStringPipeline(t *testing.T, client godis.Client, pipeline *godis.Pipeline) {
-	ctx := context.Background()
-
+func testStringPipeline(t *testing.T, client godis.Client, pipeline *godis.Pipeline, ctx context.Context) {
 	key := "kstringpipeline"
 	val := "world"
 
@@ -128,14 +126,13 @@ func testStringPipeline(t *testing.T, client godis.Client, pipeline *godis.Pipel
 }
 
 func TestGenericPipeline(t *testing.T) { runPiplelineTest(t, testGenericPipeline) }
-func testGenericPipeline(t *testing.T, client godis.Client, pipeline *godis.Pipeline) {
-	ctx := context.Background()
-
+func testGenericPipeline(t *testing.T, client godis.Client, pipeline *godis.Pipeline, ctx context.Context) {
 	ok, err := client.Set(ctx, "k1", "v1")
 	assert.Nil(t, err)
 	assert.True(t, ok)
 
 	pipeline.Copy("k1", "k2", godis.REPLACEArg)
+	pipeline.Del("k1")
 
 	res, err := pipeline.Exec(ctx)
 	assert.Nil(t, err)
@@ -148,5 +145,6 @@ func testGenericPipeline(t *testing.T, client godis.Client, pipeline *godis.Pipe
 
 	// COPY
 	assert.True(t, popRes().(bool))
-
+	// Del
+	assert.Equal(t, int64(1), popRes().(int64))
 }

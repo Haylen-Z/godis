@@ -41,3 +41,24 @@ func (c *client) Copy(ctx context.Context, source, dest string, args ...arg) (bo
 	}
 	return res.(bool), err
 }
+
+type delCommand struct {
+	keys []string
+}
+
+func (c *delCommand) SendReq(ctx context.Context, protocol Protocol) error {
+	return sendReq(ctx, protocol, append([]string{"DEL"}, c.keys...), nil)
+}
+
+func (c *delCommand) ReadResp(ctx context.Context, protocol Protocol) (interface{}, error) {
+	return protocol.ReadInteger(ctx)
+}
+
+func (c *client) Del(ctx context.Context, keys ...string) (int64, error) {
+	cmd := &delCommand{keys: keys}
+	res, err := c.exec(ctx, cmd)
+	if err != nil {
+		return 0, err
+	}
+	return res.(int64), err
+}

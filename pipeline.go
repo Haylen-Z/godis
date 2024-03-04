@@ -50,6 +50,10 @@ func (p *Pipeline) Copy(source, dest string, args ...arg) {
 	p.commands = append(p.commands, &copyCommand{source: source, dest: dest, args: args})
 }
 
+func (p *Pipeline) Del(keys ...string) {
+	p.commands = append(p.commands, &delCommand{keys: keys})
+}
+
 // String
 
 func (p *Pipeline) Append(key string, value string) {

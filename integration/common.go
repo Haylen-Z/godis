@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"context"
 	"testing"
 
 	"github.com/Haylen-Z/godis"
@@ -23,8 +24,8 @@ func teardownClient() {
 	}
 }
 
-func Run(t *testing.T, test func(*testing.T, godis.Client)) {
+func run(t *testing.T, test func(*testing.T, godis.Client, context.Context)) {
 	setupClient()
 	defer teardownClient()
-	test(t, client)
+	test(t, client, context.Background())
 }
