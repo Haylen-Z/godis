@@ -378,18 +378,20 @@ func TestMSetNx(t *testing.T) {
 		"k3": "v3",
 	}
 
-	// TODO: Implement DELETE command to make this work
-	// ok, err := client.MSetNX(ctx, kvs)
-	// assert.Nil(t, err)
-	// assert.True(t, ok)
+	_, err := client.Del(ctx, "k1", "k2", "k3")
+	assert.Nil(t, err)
 
 	ok, err := client.MSetNX(ctx, kvs)
 	assert.Nil(t, err)
+	assert.True(t, ok)
+
+	ok, err = client.MSetNX(ctx, kvs)
+	assert.Nil(t, err)
 	assert.False(t, ok)
 
-	// v, err := client.Get(ctx, "k1")
-	// assert.Nil(t, err)
-	// assert.Equal(t, kvs["k1"], *v)
+	v, err := client.Get(ctx, "k1")
+	assert.Nil(t, err)
+	assert.Equal(t, kvs["k1"], *v)
 }
 
 func TestPSetEX(t *testing.T) {
@@ -416,18 +418,20 @@ func TestSetNx(t *testing.T) {
 
 	ctx := context.Background()
 
-	// TODO: Implement DELETE command to make this work
-	// ok, err := client.SetNX(ctx, "k", "v")
-	// assert.Nil(t, err)
-	// assert.True(t, ok)
+	_, err := client.Del(ctx, "k")
+	assert.Nil(t, err)
 
 	ok, err := client.SetNX(ctx, "k", "v")
 	assert.Nil(t, err)
+	assert.True(t, ok)
+
+	ok, err = client.SetNX(ctx, "k", "v1")
+	assert.Nil(t, err)
 	assert.False(t, ok)
 
-	// v, err := client.Get(ctx, "k1")
-	// assert.Nil(t, err)
-	// assert.Equal(t, kvs["k1"], *v)
+	v, err := client.Get(ctx, "k1")
+	assert.Nil(t, err)
+	assert.Equal(t, "v", *v)
 }
 
 func TestSetRange(t *testing.T) {
